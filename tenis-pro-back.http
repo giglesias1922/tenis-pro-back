@@ -1,0 +1,6 @@
+@tenis_pro_back_HostAddress = http://localhost:5192
+
+GET {{tenis_pro_back_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
