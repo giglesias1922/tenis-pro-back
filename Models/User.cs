@@ -40,5 +40,8 @@ namespace tenis_pro_back.Models
 
         [BsonElement("birthdate")]
         public string? BirthDate { get; set; }
+
+        [BsonElement("identification")]
+        public string? Identification { get; set; }
     }
 }

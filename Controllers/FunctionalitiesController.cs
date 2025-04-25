@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using MongoDB.Driver;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using tenis_pro_back.Interfaces;
 
 namespace tenis_pro_back.Controllers
 {
@@ -11,9 +12,9 @@ namespace tenis_pro_back.Controllers
     [Route("api/[controller]")]
     public class FunctionalitiesController : ControllerBase
     {
-        private readonly FunctionalitiesRepository _functionalitiesRepository;
+        private readonly IFunctionality _functionalitiesRepository;
 
-        public FunctionalitiesController(FunctionalitiesRepository functionalitiesRepository)
+        public FunctionalitiesController(IFunctionality functionalitiesRepository)
         {
             _functionalitiesRepository = functionalitiesRepository;
         }
@@ -22,7 +23,7 @@ namespace tenis_pro_back.Controllers
         [HttpGet]
         public async Task<ActionResult<List<Functionality>>> Get()
         {
-            var list = await _functionalitiesRepository.GetAllAsync();
+            var list = await _functionalitiesRepository.GetAll();
             return Ok(list.OrderBy(o => o.Name));
         }
 
@@ -30,7 +31,7 @@ namespace tenis_pro_back.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<Functionality>> Get(string id)
         {
-            var obj = await _functionalitiesRepository.GetByIdAsync(id);
+            var obj = await _functionalitiesRepository.GetById(id);
             if (obj == null) return NotFound();
             return Ok(obj);
         }
@@ -39,7 +40,7 @@ namespace tenis_pro_back.Controllers
         [HttpPost]
         public async Task<ActionResult> Create(Functionality obj)
         {
-            await _functionalitiesRepository.CreateAsync(obj);
+            await _functionalitiesRepository.Post(obj);
             return CreatedAtAction(nameof(Get), new { id = obj.Id }, obj);
         }
 
@@ -47,10 +48,10 @@ namespace tenis_pro_back.Controllers
         [HttpPut("{id}")]
         public async Task<ActionResult> Update(string id, Functionality obj)
         {
-            var existingObj = await _functionalitiesRepository.GetByIdAsync(id);
+            var existingObj = await _functionalitiesRepository.GetById(id);
             if (existingObj == null) return NotFound();
 
-            await _functionalitiesRepository.UpdateAsync(id, obj);
+            await _functionalitiesRepository.Put(id, obj);
             return NoContent();
         }
 
@@ -58,11 +59,11 @@ namespace tenis_pro_back.Controllers
         [HttpDelete("{id}")]
         public async Task<ActionResult> Delete(string id)
         {
-            var existingObj = await _functionalitiesRepository.GetByIdAsync(id);
+            var existingObj = await _functionalitiesRepository.GetById(id);
             if (existingObj == null) return NotFound();
 
 
-            await _functionalitiesRepository.DeleteAsync(id);
+            await _functionalitiesRepository.Delete(id);
             return NoContent();
         }
 

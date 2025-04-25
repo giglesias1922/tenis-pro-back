@@ -1,33 +1,50 @@
-﻿using tenis_pro_back.Models;
-using tenis_pro_back.Repositories;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
+using tenis_pro_back.Interfaces;
+using tenis_pro_back.Models;
+using tenis_pro_back.Models.Dto;
 
 namespace tenis_pro_back.Controllers
 {
-	[Route("api/[controller]")]
+    [Route("api/[controller]")]
 	[ApiController]
 	public class TournamentsController : ControllerBase
 	{
-		private readonly TournamentsRepository _tournamentRepository;
+		private readonly ITournament _tournamentRepository;
 
-		public TournamentsController(TournamentsRepository tournamentRepository)
+		public TournamentsController(ITournament tournamentRepository)
 		{
 			_tournamentRepository = tournamentRepository;
 		}
 
-		// GET: api/tournaments
-		[HttpGet]
-		public async Task<ActionResult<IEnumerable<Tournament>>> GetAll()
+        [HttpGet("open-registrations")]
+        public async Task<ActionResult<IEnumerable<TournamentDetailDto>>> GetTournamentsWithOpenRegistrations()
+        {
+            var tournaments = await _tournamentRepository.GetTournamentsWithOpenRegistrations();
+            return Ok(tournaments);
+        }
+
+
+        [HttpGet("to-programming")]
+        public async Task<ActionResult<IEnumerable<TournamentDetailDto>>> GetTournamentsToProgramming()
+        {
+            var tournaments = await _tournamentRepository.GetTournamentsToProgramming();
+            return Ok(tournaments);
+        }
+        
+
+        // GET: api/tournaments
+        [HttpGet]
+		public async Task<ActionResult<IEnumerable<TournamentDetailDto>>> GetAll()
 		{
-			var tournaments = await _tournamentRepository.GetAllTournamentsAsync();
+			var tournaments = await _tournamentRepository.GetAll();
 			return Ok(tournaments);
 		}
 
 		// GET: api/tournaments/{id}
 		[HttpGet("{id}")]
-		public async Task<ActionResult<Tournament>> GetById(string id)
+		public async Task<ActionResult<TournamentDetailDto>> GetById(string id)
 		{
-			var tournament = await _tournamentRepository.GetTournamentByIdAsync(id);
+			var tournament = await _tournamentRepository.GetById(id);
 
 			if (tournament == null)
 			{
@@ -42,7 +59,7 @@ namespace tenis_pro_back.Controllers
 		public async Task<ActionResult> Create(Tournament tournament)
 		{
 			tournament.Id = null; // Deja que MongoDB genere el Id automáticamente
-			await _tournamentRepository.CreateTournamentAsync(tournament);
+			await _tournamentRepository.Post(tournament);
 			return CreatedAtAction(nameof(GetById), new { id = tournament.Id }, tournament);
 		}
 
@@ -50,14 +67,14 @@ namespace tenis_pro_back.Controllers
 		[HttpPut("{id}")]
 		public async Task<IActionResult> Update(string id, Tournament tournament)
 		{
-			var existingTournament = await _tournamentRepository.GetTournamentByIdAsync(id);
+			var existingTournament = await _tournamentRepository.GetById(id);
 
 			if (existingTournament == null)
 			{
 				return NotFound();
 			}
 
-			await _tournamentRepository.UpdateTournamentAsync(id, tournament);
+			await _tournamentRepository.Put(id, tournament);
 			return NoContent();
 		}
 
@@ -65,14 +82,14 @@ namespace tenis_pro_back.Controllers
 		[HttpDelete("{id}")]
 		public async Task<IActionResult> Delete(string id)
 		{
-			var tournament = await _tournamentRepository.GetTournamentByIdAsync(id);
+			var tournament = await _tournamentRepository.GetById(id);
 
 			if (tournament == null)
 			{
 				return NotFound();
 			}
 
-			await _tournamentRepository.DeleteTournamentAsync(id);
+			await _tournamentRepository.Delete(id);
 			return NoContent();
 
 		}

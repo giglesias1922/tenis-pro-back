@@ -11,5 +11,9 @@
 
 		[BsonElement("description")]
 		public string Description { get; set; }
-	}
+
+
+        [BsonElement("active")]
+        public bool Active { get; set; } = true;
+    }
 }

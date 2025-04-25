@@ -1,25 +1,34 @@
-﻿using tenis_pro_back.Models;
-using tenis_pro_back.Repositories;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
+using tenis_pro_back.Interfaces;
+using tenis_pro_back.Models;
 
 namespace tenis_pro_back.Controllers
 {
-	[Route("api/[controller]")]
+    [Route("api/[controller]")]
 	[ApiController]
 	public class UsersController : ControllerBase
 	{
-		private readonly UsersRepository _userRepository;
+		private readonly IUser _userRepository;
 
-		public UsersController(UsersRepository userRepository)
+		public UsersController(IUser userRepository)
 		{
 			_userRepository = userRepository;
 		}
 
-		// GET: api/users
-		[HttpGet]
+        // GET: api/users
+        [HttpGet]
+		[Route("Category/{categoryId}")]
+        public async Task<ActionResult<IEnumerable<User>>> GetByCategory(string categoryId)
+        {
+            var users = await _userRepository.GetByCategory(categoryId);
+            return Ok(users);
+        }
+
+        // GET: api/users
+        [HttpGet]
 		public async Task<ActionResult<IEnumerable<User>>> GetAll()
 		{
-			var users = await _userRepository.GetAllUsersAsync();
+			var users = await _userRepository.GetAll();
 			return Ok(users);
 		}
 
@@ -27,7 +36,7 @@ namespace tenis_pro_back.Controllers
 		[HttpGet("{id}")]
 		public async Task<ActionResult<User>> GetById(string id)
 		{
-			var user = await _userRepository.GetUserByIdAsync(id);
+			var user = await _userRepository.GetById(id);
 
 			if (user == null)
 			{
@@ -42,7 +51,7 @@ namespace tenis_pro_back.Controllers
 		public async Task<ActionResult> Create(User user)
 		{
 			user.Id = null; // Deja que MongoDB genere el Id automáticamente
-			await _userRepository.CreateUserAsync(user);
+			await _userRepository.Post(user);
 			return CreatedAtAction(nameof(GetById), new { id = user.Id }, user);
 		}
 
@@ -50,29 +59,36 @@ namespace tenis_pro_back.Controllers
 		[HttpPut("{id}")]
 		public async Task<IActionResult> Update(string id, User user)
 		{
-			var existingUser = await _userRepository.GetUserByIdAsync(id);
-
-			if (existingUser == null)
+			try
 			{
-				return NotFound();
-			}
+				var existingUser = await _userRepository.GetById(id);
 
-			await _userRepository.UpdateUserAsync(id, user);
-			return NoContent();
+				if (existingUser == null)
+				{
+					return NotFound();
+				}
+
+				await _userRepository.Put(id, user);
+				return NoContent();
+			}
+			catch (Exception ex)
+			{
+				return BadRequest(ex.Message);
+			}
 		}
 
 		// DELETE: api/users/{id}
 		[HttpDelete("{id}")]
 		public async Task<IActionResult> Delete(string id)
 		{
-			var user = await _userRepository.GetUserByIdAsync(id);
+			var user = await _userRepository.GetById(id);
 
 			if (user == null)
 			{
 				return NotFound();
 			}
 
-			await _userRepository.DeleteUserAsync(id);
+			await _userRepository.Delete(id);
 			return NoContent();
 		}
 	}

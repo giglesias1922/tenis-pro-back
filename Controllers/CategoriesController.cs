@@ -1,20 +1,17 @@
-﻿using tenis_pro_back.Models;
-using tenis_pro_back.Repositories;
-using Microsoft.AspNetCore.Mvc;
-using MongoDB.Driver;
-using System.Collections.Generic;
-using System.Threading.Tasks;
+﻿using Microsoft.AspNetCore.Mvc;
+using tenis_pro_back.Interfaces;
+using tenis_pro_back.Models;
 
 namespace tenis_pro_back.Controllers
 {
-	[ApiController]
+    [ApiController]
 	[Route("api/[controller]")]
 	public class CategoriesController : ControllerBase
 	{
-		private readonly CategoriesRepository _categoryRepository;
-		private readonly TournamentsRepository _tournamentRepository;
+		private readonly ICategory _categoryRepository;
+		private readonly ITournament _tournamentRepository;
 
-        public CategoriesController(CategoriesRepository categoryRepository, TournamentsRepository tournamentRepository)
+        public CategoriesController(ICategory categoryRepository, ITournament tournamentRepository)
         {
             _categoryRepository = categoryRepository;
             _tournamentRepository = tournamentRepository;
@@ -24,15 +21,15 @@ namespace tenis_pro_back.Controllers
         [HttpGet]
 		public async Task<ActionResult<List<Category>>> Get()
 		{
-			var categories = await _categoryRepository.GetCategoriesAsync();
+			var categories = await _categoryRepository.GetAll();
 			return Ok(categories.OrderBy(o=>o.Description));
 		}
 
 		// GET: api/categories/{id}
 		[HttpGet("{id}")]
-		public async Task<ActionResult<Category>> Get(string id)
+		public async Task<ActionResult<Category>> GetCategoryById(string id)
 		{
-			var category = await _categoryRepository.GetCategoryByIdAsync(id);
+			var category = await _categoryRepository.GetById(id);
 			if (category == null) return NotFound();
 			return Ok(category);
 		}
@@ -41,7 +38,7 @@ namespace tenis_pro_back.Controllers
 		[HttpPost]
 		public async Task<ActionResult> Create(Category category)
 		{
-			await _categoryRepository.CreateCategoryAsync(category);
+			await _categoryRepository.Post(category);
 			return CreatedAtAction(nameof(Get), new { id = category.Id }, category);
 		}
 
@@ -49,10 +46,10 @@ namespace tenis_pro_back.Controllers
 		[HttpPut("{id}")]
 		public async Task<ActionResult> Update(string id, Category category)
 		{
-			var existingCategory = await _categoryRepository.GetCategoryByIdAsync(id);
+			var existingCategory = await _categoryRepository.GetById(id);
 			if (existingCategory == null) return NotFound();
 
-			await _categoryRepository.UpdateCategoryAsync(id, category);
+			await _categoryRepository.Put(id, category);
 			return NoContent();
 		}
 
@@ -60,17 +57,10 @@ namespace tenis_pro_back.Controllers
         [HttpDelete("{id}")]
         public async Task<ActionResult> Delete(string id)
         {
-            var existingCategory = await _categoryRepository.GetCategoryByIdAsync(id);
+            var existingCategory = await _categoryRepository.GetById(id);
             if (existingCategory == null) return NotFound();
 
-            // Verificar si hay torneos asociados a esta categoría
-            long tournamentCount = await _tournamentRepository.CountTournamentsByCategoryIdAsync(id);
-            if (tournamentCount > 0)
-            {
-                return BadRequest("No se puede eliminar la categoría porque hay torneos asociados a ella.");
-            }
-
-            await _categoryRepository.DeleteCategoryAsync(id);
+            await _categoryRepository.Delete(id);
             return NoContent();
         }
 

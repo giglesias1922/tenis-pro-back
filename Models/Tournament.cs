@@ -14,7 +14,7 @@ namespace tenis_pro_back.Models
 		public required string Description { get; set; }
 
 		[BsonElement("closedate")] 
-		public DateTime? closeDate { get; set; } //cierre de inscripcion
+		public DateTime? CloseDate { get; set; } //cierre de inscripcion
 
 		[BsonElement("initialdate")]
 		public DateTime? InitialDate { get; set; }
@@ -30,11 +30,20 @@ namespace tenis_pro_back.Models
 		[BsonRepresentation(BsonType.ObjectId)]
 		public required string CategoryId { get; set; }  // IDs de las categorías
 
-		[BsonElement("status")]
-		public required TournamentStatus? Status { get; set; } = TournamentStatus.Pending;
+        [BsonElement("tournamentype")]
+        public required TournamentType TournamentType{ get; set; }  // single /doble
 
-		public string? CategoryDesc { get; set; }
-		public string? LocationName { get; set; } 
+        [BsonElement("status")]
+		public required TournamentStatus Status { get; set; }
+
+        [BsonIgnore]
+        public string StatusName => Status switch
+        {
+            TournamentStatus.Pending => "Pendiente",
+            TournamentStatus.Initiated => "Iniciado",
+            TournamentStatus.Finalized => "Finalizado",
+            _ => "Desconocido"
+        };
 
 	}
 
@@ -44,4 +53,10 @@ namespace tenis_pro_back.Models
 		Initiated = 1,
 		Finalized = 2
 	}
+
+    public enum TournamentType
+    {
+        Single = 0,
+        Double = 1
+    }
 }

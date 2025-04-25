@@ -1,6 +1,7 @@
 ﻿using tenis_pro_back.Models;
 using tenis_pro_back.Repositories;
 using Microsoft.AspNetCore.Mvc;
+using tenis_pro_back.Interfaces;
 
 namespace tenis_pro_back.Controllers
 {
@@ -8,11 +9,11 @@ namespace tenis_pro_back.Controllers
 	[ApiController]
 	public class LocationsController : ControllerBase
 	{
-		private readonly LocationsRepository _locationRepository;
-		private readonly TournamentsRepository _tournamentRepository;
+		private readonly ILocation _locationRepository;
+		private readonly ITournament _tournamentRepository;
 
 
-        public LocationsController(LocationsRepository locationRepository, TournamentsRepository tournamentRepository)
+        public LocationsController(ILocation locationRepository, ITournament tournamentRepository)
         {
             _locationRepository = locationRepository;
             _tournamentRepository = tournamentRepository;
@@ -24,7 +25,7 @@ namespace tenis_pro_back.Controllers
 		{
 			try
 			{
-				var locations = await _locationRepository.GetLocationsAsync();
+				var locations = await _locationRepository.GetAll();
 				return Ok(locations);
 			}
 			catch (Exception ex)
@@ -37,7 +38,7 @@ namespace tenis_pro_back.Controllers
 		[HttpGet("{id}")]
 		public async Task<ActionResult<Location>> GetById(string id)
 		{
-			var location = await _locationRepository.GetLocationByIdAsync(id);
+			var location = await _locationRepository.GetById(id);
 			if (location == null)
 			{
 				return NotFound();
@@ -50,7 +51,7 @@ namespace tenis_pro_back.Controllers
 		public async Task<ActionResult<Location>> Create(Location location) 
 		{
 			location.Id = null; // MongoDB generates the ID
-			await _locationRepository.CreateLocationAsync(location);
+			await _locationRepository.Post(location);
 			return CreatedAtAction(nameof(GetById), new { id = location.Id }, location);
 		}
 
@@ -58,14 +59,14 @@ namespace tenis_pro_back.Controllers
 		[HttpPut("{id}")]
 		public async Task<IActionResult> Update(string id, Location location)
 		{
-			var existingLocation = await _locationRepository.GetLocationByIdAsync(id);
+			var existingLocation = await _locationRepository.GetById(id);
 			if (existingLocation == null)
 			{
 				return NotFound();
 			}
 
 			location.Id = id; // Ensure the ID remains the same
-			var updated = await _locationRepository.UpdateLocationAsync(id, location);
+			var updated = await _locationRepository.Put(id, location);
 
 			if (!updated)
 			{
@@ -79,20 +80,14 @@ namespace tenis_pro_back.Controllers
 		[HttpDelete("{id}")]
 		public async Task<IActionResult> Delete(string id)
 		{
-			var location = await _locationRepository.GetLocationByIdAsync(id);
+			var location = await _locationRepository.GetById(id);
 			if (location == null)
 			{
 				return NotFound();
 			}
 
-            // Verificar si hay torneos asociados a esta categoría
-            long tournamentCount = await _tournamentRepository.CountTournamentsByLocationIdAsync(id);
-            if (tournamentCount > 0)
-            {
-                return BadRequest("No se puede eliminar la sede porque hay torneos asociados a ella.");
-            }
+            var deleted = await _locationRepository.Delete(id);
 
-            var deleted = await _locationRepository.DeleteLocationAsync(id);
 			if (!deleted)
 			{
 				return StatusCode(500, "Error deleting the location");

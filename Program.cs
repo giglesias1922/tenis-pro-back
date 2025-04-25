@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Hosting;
 using MongoDB.Bson;
 using MongoDB.Driver;
+using tenis_pro_back.Interfaces;
 using tenis_pro_back.MongoDBService;
 using tenis_pro_back.Repositories;
 
@@ -29,13 +30,15 @@ builder.Services.AddSingleton<IMongoDatabase>(sp =>
 });
 
 
-// Registro del repositorio CategoryRepository
-builder.Services.AddScoped<CategoriesRepository>();
-builder.Services.AddScoped<LocationsRepository>();
-builder.Services.AddScoped<TournamentsRepository>();
-builder.Services.AddScoped<UsersRepository>();
-builder.Services.AddScoped<ProfilesRepository>();
-builder.Services.AddScoped<FunctionalitiesRepository>();
+// Registro del repositorio
+builder.Services.AddScoped(typeof(ICategory), typeof(CategoriesRepository));
+builder.Services.AddScoped(typeof(ILocation), typeof(LocationsRepository));
+builder.Services.AddScoped(typeof(ITournament), typeof(TournamentsRepository));
+builder.Services.AddScoped(typeof(IUser), typeof(UsersRepository));
+builder.Services.AddScoped(typeof(IProfile), typeof(ProfilesRepository));
+builder.Services.AddScoped(typeof(IFunctionality), typeof(FunctionalitiesRepository));
+builder.Services.AddScoped(typeof(IRegistration), typeof(RegistrationRepository));
+builder.Services.AddScoped(typeof(IMatch), typeof(MatchesRepository));
 
 
 
@@ -49,14 +52,9 @@ builder.Services.AddCors(options =>
 	options.AddPolicy("AllowReactNativeApp", builder =>
 	{
 		builder
-			.WithOrigins(
-				"http://localhost:3000", // React.js local
-				"http://localhost:5174", // Vite (React.js con Vite)
-				"http://elclu.back", // React Native Expo en red local
-				"http://10.0.2.2:19000" // Emulador Android con Expo
-			)
-			.AllowAnyMethod()
-			.AllowAnyHeader();
+			.AllowAnyOrigin()   // Permite cualquier origen
+			.AllowAnyMethod()   // Permite cualquier método (GET, POST, etc.)
+			.AllowAnyHeader();  // Permite cualquier encabezado
 	});
 });
 
@@ -75,8 +73,6 @@ app.UseCors("AllowReactNativeApp");
 
 
 var serviceProvider = builder.Services.BuildServiceProvider();
-
-var objUser = serviceProvider.GetRequiredService<UsersRepository>();
 
 
 
