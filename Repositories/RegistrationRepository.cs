@@ -1,4 +1,5 @@
-﻿using MongoDB.Driver;
+﻿using AutoMapper;
+using MongoDB.Driver;
 using tenis_pro_back.Interfaces;
 using tenis_pro_back.Models;
 using tenis_pro_back.Models.Dto;
@@ -10,13 +11,17 @@ namespace tenis_pro_back.Repositories
         private readonly IMongoCollection<Registration> _registration;
         private readonly IUser _userRepository;
         private readonly ITournament _tournamentRepository;
+        private readonly IMapper _mapper;
 
-        public RegistrationRepository(IMongoDatabase database, IUser userRepository, ITournament tournament)
+        public RegistrationRepository(IMongoDatabase database, IUser userRepository, ITournament tournament, IMapper mapper)
         {
             _registration = database.GetCollection<Registration>("registrations");
             _userRepository = userRepository;
             _tournamentRepository = tournament;
+            _mapper = mapper;
         }
+
+        
 
         public async Task<List<User>> GetUsersToRegistrationAsync(string categoryId, string tournamentId)
         {
@@ -28,10 +33,11 @@ namespace tenis_pro_back.Repositories
                 .Find(r => r.TournamentId == tournamentId)
                 .ToListAsync();
 
+
             // Obtener todos los IDs de jugadores ya inscritos
             var registeredUserIds = registrations
-                .SelectMany(r => r.Players) // aplanar todos los arrays de jugadores
-                .ToHashSet();
+            .SelectMany(r => r.Players)
+            .ToHashSet();
 
             // Devolver usuarios que no están registrados
             var unregisteredUsers = listUsers
@@ -41,6 +47,17 @@ namespace tenis_pro_back.Repositories
             return unregisteredUsers;
         }
 
+        public async Task<List<RegistrationUserDto>> GetRegistratedUsers(string tournamentId)
+        {
+            var registrations = await _registration
+                .Find(r => r.TournamentId == tournamentId)
+                .SortBy(r => r.DisplayName)
+                .ToListAsync();
+
+            var registrationDtos = _mapper.Map<List<RegistrationUserDto>>(registrations);
+
+            return registrationDtos;
+        }
 
         public async Task<List<RegistrationsDto>> GetAll(string tournamentId)
         {
@@ -49,36 +66,22 @@ namespace tenis_pro_back.Repositories
             var data = await _registration.Find(c => c.TournamentId == tournamentId).ToListAsync();
             var oTournament = await _tournamentRepository.GetById(tournamentId);
 
-            var allUserIds = data
-                .SelectMany(r => r.Players.Append(r.CreatedBy))
-                .Where(id => !string.IsNullOrEmpty(id))
-                .Distinct()
-                .ToList();
 
             var listUsers = await _userRepository.GetAll();
 
-            var users = listUsers.Where(u => allUserIds.Contains(u.Id)).ToList();
-            var userMap = users.ToDictionary(u => u.Id, u => $"{u.Name ?? ""} {u.LastName ?? ""}".Trim());
+            var userMap = listUsers.ToDictionary(u => u.Id, u => $"{u.Name ?? ""} {u.LastName ?? ""}".Trim());
 
             foreach (var obj in data)
             {
-                // Combinar los nombres de los jugadores
-                var userNames = obj.Players
-                    .Select(pid => userMap.GetValueOrDefault(pid, "Desconocido"))
-                    .ToList();
-
-                string combinedUserName = string.Join(" / ", userNames); // jugador1 / jugador2
-
                 response.Add(new RegistrationsDto()
                 {
                     Id = obj.Id,
                     TournamentId = obj.TournamentId,
-                    UserId = obj.Players.FirstOrDefault(),
+                    DisplayName = obj.DisplayName,
                     CreatedAt = obj.CreatedAt,
                     CreatedBy = obj.CreatedBy,
                     TournamentDescription = oTournament?.Description,
-                    CreatedByName = obj.CreatedBy != null ? userMap.GetValueOrDefault(obj.CreatedBy, "Desconocido") : "",
-                    UserName = combinedUserName
+                    CreatedByName = obj.CreatedBy != null ? userMap.GetValueOrDefault(obj.CreatedBy, "Desconocido") : ""
                 });
             }
 

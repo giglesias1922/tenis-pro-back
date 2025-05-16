@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using tenis_pro_back.Helpers;
 using tenis_pro_back.Interfaces;
 using tenis_pro_back.Models;
 
@@ -21,47 +22,92 @@ namespace tenis_pro_back.Controllers
         [HttpGet]
 		public async Task<ActionResult<List<Category>>> Get()
 		{
-			var categories = await _categoryRepository.GetAll();
-			return Ok(categories.OrderBy(o=>o.Description));
-		}
+			try
+			{
+				var categories = await _categoryRepository.GetAll();
+				return Ok(categories.OrderBy(o => o.Description));
+			}
+			catch (Exception ex)
+			{
+				HandleErrorHelper.LogError(ex);
+				return BadRequest(ex.Message);
+
+			}
+        }
 
 		// GET: api/categories/{id}
 		[HttpGet("{id}")]
 		public async Task<ActionResult<Category>> GetCategoryById(string id)
 		{
-			var category = await _categoryRepository.GetById(id);
-			if (category == null) return NotFound();
-			return Ok(category);
-		}
+			try
+			{
+				var category = await _categoryRepository.GetById(id);
+				if (category == null) return NotFound();
+				return Ok(category);
+			}
+			catch (Exception ex)
+			{
+				HandleErrorHelper.LogError(ex);
+				return BadRequest(ex.Message);
+
+			}
+        }
 
 		// POST: api/categories
 		[HttpPost]
 		public async Task<ActionResult> Create(Category category)
 		{
-			await _categoryRepository.Post(category);
-			return CreatedAtAction(nameof(Get), new { id = category.Id }, category);
-		}
+			try
+			{
+				await _categoryRepository.Post(category);
+				return CreatedAtAction(nameof(Get), new { id = category.Id }, category);
+			}
+            catch (Exception ex)
+            {
+                HandleErrorHelper.LogError(ex);
+                return BadRequest(ex.Message);
+
+            }
+        }
 
 		// PUT: api/categories/{id}
 		[HttpPut("{id}")]
 		public async Task<ActionResult> Update(string id, Category category)
 		{
-			var existingCategory = await _categoryRepository.GetById(id);
-			if (existingCategory == null) return NotFound();
+			try
+			{
+				var existingCategory = await _categoryRepository.GetById(id);
+				if (existingCategory == null) return NotFound();
 
-			await _categoryRepository.Put(id, category);
-			return NoContent();
-		}
+				await _categoryRepository.Put(id, category);
+				return NoContent();
+			}
+            catch (Exception ex)
+            {
+                HandleErrorHelper.LogError(ex);
+                return BadRequest(ex.Message);
+
+            }
+        }
 
         // DELETE: api/categories/{id}
         [HttpDelete("{id}")]
         public async Task<ActionResult> Delete(string id)
         {
-            var existingCategory = await _categoryRepository.GetById(id);
-            if (existingCategory == null) return NotFound();
+			try
+			{
+				var existingCategory = await _categoryRepository.GetById(id);
+				if (existingCategory == null) return NotFound();
 
-            await _categoryRepository.Delete(id);
-            return NoContent();
+				await _categoryRepository.Delete(id);
+				return NoContent();
+			}
+            catch (Exception ex)
+            {
+                HandleErrorHelper.LogError(ex);
+                return BadRequest(ex.Message);
+
+            }
         }
 
     }

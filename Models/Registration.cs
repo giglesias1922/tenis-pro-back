@@ -13,9 +13,9 @@ namespace tenis_pro_back.Models
         [BsonRepresentation(BsonType.ObjectId)]
         public required string TournamentId { get; set; }  // IDs del torneo
 
-        [BsonElement("registrationid")]
+        [BsonElement("players")]
         [BsonRepresentation(BsonType.ObjectId)]
-        public required string RegistrationId { get; set; }  // Uno o dos jugadores
+        public required List<string> Players { get; set; }  // Uno o dos jugadores
 
         [BsonElement("createdby")]
         [BsonRepresentation(BsonType.ObjectId)]

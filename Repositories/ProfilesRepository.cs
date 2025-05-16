@@ -23,10 +23,17 @@ namespace tenis_pro_back.Repositories
 			return await _profiles.Find(u => u.Id == id).FirstOrDefaultAsync();
 		}
 
-		public async Task Post(Profile profile)
+        public async Task<Profile?> GetByType(Profile.ProfileType type)
+        {
+            return await _profiles.Find(u => u.Type == type).FirstOrDefaultAsync();
+        }
+
+        public async Task<Profile> Post(Profile profile)
         {
 			await _profiles.InsertOneAsync(profile);
-		}
+			return profile;
+
+        }
 
 		public async Task Put(string id, Profile profile)
 		{

@@ -8,10 +8,10 @@ namespace tenis_pro_back.Interfaces
     {
         Task Post(Match match);
         Task<List<Match>> GetScheduledMatchesAsync();
-        Task<Match?> GetById(string id);
+        Task<MatchDto?> GetById(string id);
         Task<List<MatchHistory>> GetMatchHistoryAsync(string id);
         Task UpdateMatchStatusAsync(string id, MatchStatus status, string? notes);
-        Task AddMatchResultAsync(string id, string result);
+        Task AddMatchResultAsync(string id, MatchResultDto result);
 
         Task Delete(string id);
         Task<List<MatchDto>> GetAll();

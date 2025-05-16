@@ -3,6 +3,8 @@ using static tenis_pro_back.Models.Match;
 using tenis_pro_back.Repositories;
 using tenis_pro_back.Interfaces;
 using tenis_pro_back.Models;
+using tenis_pro_back.Models.Dto;
+using tenis_pro_back.Helpers;
 
 namespace tenis_pro_back.Controllers
 {
@@ -21,62 +23,151 @@ namespace tenis_pro_back.Controllers
         [HttpDelete("{id}")]
         public async Task<ActionResult> Delete(string id)
         {
-            var existing = await _repository.GetById(id);
-            if (existing == null) return NotFound();
+            try
+            {
+                var existing = await _repository.GetById(id);
+                if (existing == null) return NotFound();
 
-            await _repository.Delete(id);
-            return NoContent();
+                await _repository.Delete(id);
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                HandleErrorHelper.LogError(ex);
+                return BadRequest(ex.Message);
+
+            }
         }
 
         [HttpPost]
-        public async Task<IActionResult> AddMatch([FromBody] Match match)
+        public async Task<IActionResult> Create([FromBody] CreateMatchDto dto)
         {
-            await _repository.Post(match);
-            return Ok();
+            try
+            {
+                var match = new Match
+                {
+                    TournamentId = dto.TournamentId,
+                    registrations = dto.Registrations,
+                    Status = Match.MatchStatus.Scheduled,
+                    CreatedAt = DateTime.UtcNow,
+                    History = new List<Match.MatchHistory>
+                {
+                    new Match.MatchHistory
+                    {
+                        Date = DateTime.UtcNow,
+                        Status = Match.MatchStatus.Scheduled,
+                        Notes = $"Partido programado para el {dto.ScheduledDate:dd/MM/yyyy HH:mm}"
+                    }
+                }
+                };
+
+                await _repository.Post(match);
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                HandleErrorHelper.LogError(ex);
+                return BadRequest(ex.Message);
+
+            }
         }
 
         [HttpGet("scheduled")]
         public async Task<IActionResult> GetScheduledMatches()
         {
-            var matches = await _repository.GetScheduledMatchesAsync();
-            return Ok(matches);
+            try
+            {
+                var matches = await _repository.GetScheduledMatchesAsync();
+                return Ok(matches);
+            }
+            catch (Exception ex)
+            {
+                HandleErrorHelper.LogError(ex);
+                return BadRequest(ex.Message);
+
+            }
         }
 
         [HttpGet("{id}")]
         public async Task<IActionResult> GetMatchById(string id)
         {
-            var match = await _repository.GetById(id);
-            if (match == null) return NotFound();
-            return Ok(match);
+            try
+            {
+                var match = await _repository.GetById(id);
+                if (match == null) return NotFound();
+                return Ok(match);
+            }
+            catch (Exception ex)
+            {
+                HandleErrorHelper.LogError(ex);
+                return BadRequest(ex.Message);
+
+            }
         }
 
         [HttpGet]
         public async Task<IActionResult> GetMatches()
         {
-            var match = await _repository.GetAll();
-            if (match == null) return NotFound();
-            return Ok(match);
+            try
+            {
+                var match = await _repository.GetAll();
+                if (match == null) return NotFound();
+                return Ok(match);
+            }
+            catch (Exception ex)
+            {
+                HandleErrorHelper.LogError(ex);
+                return BadRequest(ex.Message);
+
+            }
         }
 
         [HttpGet("{id}/history")]
         public async Task<IActionResult> GetMatchHistory(string id)
         {
-            var history = await _repository.GetMatchHistoryAsync(id);
-            return Ok(history);
+            try
+            {
+                var history = await _repository.GetMatchHistoryAsync(id);
+                return Ok(history);
+            }
+            catch (Exception ex)
+            {
+                HandleErrorHelper.LogError(ex);
+                return BadRequest(ex.Message);
+
+            }
         }
 
         [HttpPut("{id}/status")]
         public async Task<IActionResult> UpdateStatus(string id, [FromQuery] MatchStatus status, [FromBody] string? notes)
         {
-            await _repository.UpdateMatchStatusAsync(id, status, notes);
-            return Ok();
+            try
+            {
+                await _repository.UpdateMatchStatusAsync(id, status, notes);
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                HandleErrorHelper.LogError(ex);
+                return BadRequest(ex.Message);
+
+            }
         }
 
         [HttpPut("{id}/result")]
-        public async Task<IActionResult> AddResult(string id, [FromBody] string result)
+        public async Task<IActionResult> AddResult(string id, [FromBody] MatchResultDto result)
         {
-            await _repository.AddMatchResultAsync(id, result);
-            return Ok();
+            try
+            {
+                await _repository.AddMatchResultAsync(id, result);
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                HandleErrorHelper.LogError(ex);
+                return BadRequest(ex.Message);
+
+            }
         }
     }
 }

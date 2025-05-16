@@ -2,6 +2,7 @@
 using tenis_pro_back.Repositories;
 using Microsoft.AspNetCore.Mvc;
 using tenis_pro_back.Interfaces;
+using tenis_pro_back.Helpers;
 
 namespace tenis_pro_back.Controllers
 {
@@ -28,72 +29,110 @@ namespace tenis_pro_back.Controllers
 				var locations = await _locationRepository.GetAll();
 				return Ok(locations);
 			}
-			catch (Exception ex)
-			{
-				return BadRequest(ex.Message);
-			}
-		}
+            catch (Exception ex)
+            {
+                HandleErrorHelper.LogError(ex);
+                return BadRequest(ex.Message);
+
+            }
+        }
 
 		// GET: api/location/{id}
 		[HttpGet("{id}")]
 		public async Task<ActionResult<Location>> GetById(string id)
 		{
-			var location = await _locationRepository.GetById(id);
-			if (location == null)
+			try
 			{
-				return NotFound();
+				var location = await _locationRepository.GetById(id);
+				if (location == null)
+				{
+					return NotFound();
+				}
+				return Ok(location);
 			}
-			return Ok(location);
-		}
+            catch (Exception ex)
+            {
+                HandleErrorHelper.LogError(ex);
+                return BadRequest(ex.Message);
+
+            }
+        }
 
 		// POST: api/location
 		[HttpPost]
 		public async Task<ActionResult<Location>> Create(Location location) 
 		{
-			location.Id = null; // MongoDB generates the ID
-			await _locationRepository.Post(location);
-			return CreatedAtAction(nameof(GetById), new { id = location.Id }, location);
-		}
+			try
+			{
+				location.Id = null; // MongoDB generates the ID
+				await _locationRepository.Post(location);
+				return CreatedAtAction(nameof(GetById), new { id = location.Id }, location);
+			}
+            catch (Exception ex)
+            {
+                HandleErrorHelper.LogError(ex);
+                return BadRequest(ex.Message);
+
+            }
+        }
 
 		// PUT: api/location/{id}
 		[HttpPut("{id}")]
 		public async Task<IActionResult> Update(string id, Location location)
 		{
-			var existingLocation = await _locationRepository.GetById(id);
-			if (existingLocation == null)
+			try
 			{
-				return NotFound();
+				var existingLocation = await _locationRepository.GetById(id);
+				if (existingLocation == null)
+				{
+					return NotFound();
+				}
+
+				location.Id = id; // Ensure the ID remains the same
+				var updated = await _locationRepository.Put(id, location);
+
+				if (!updated)
+				{
+					return StatusCode(500, "Error updating the location");
+				}
+
+				return NoContent();
 			}
+            catch (Exception ex)
+            {
+                HandleErrorHelper.LogError(ex);
+                return BadRequest(ex.Message);
 
-			location.Id = id; // Ensure the ID remains the same
-			var updated = await _locationRepository.Put(id, location);
-
-			if (!updated)
-			{
-				return StatusCode(500, "Error updating the location");
-			}
-
-			return NoContent();
-		}
+            }
+        }
 
 		// DELETE: api/location/{id}
 		[HttpDelete("{id}")]
 		public async Task<IActionResult> Delete(string id)
 		{
-			var location = await _locationRepository.GetById(id);
-			if (location == null)
+			try
 			{
-				return NotFound();
+				var location = await _locationRepository.GetById(id);
+				if (location == null)
+				{
+					return NotFound();
+				}
+
+				var deleted = await _locationRepository.Delete(id);
+
+				if (!deleted)
+				{
+					return StatusCode(500, "Error deleting the location");
+				}
+
+				return NoContent();
 			}
+            catch (Exception ex)
+            {
+                HandleErrorHelper.LogError(ex);
+                return BadRequest(ex.Message);
 
-            var deleted = await _locationRepository.Delete(id);
-
-			if (!deleted)
-			{
-				return StatusCode(500, "Error deleting the location");
-			}
-
-			return NoContent();
-		}
+            }
+        }
 	}
 }

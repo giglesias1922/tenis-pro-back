@@ -18,11 +18,11 @@ namespace tenis_pro_back.Models
         [BsonElement("phone1")]
 		public string? Phone1 { get; set; }
 
-		[BsonElement("phone2")]
-		public string? Phone2 { get; set; }
+		[BsonElement("comment")]
+		public string? Comment { get; set; }
 
 		[BsonElement("email")]
-		public string? Email { get; set; }
+		public required string Email { get; set; }
 
 		[BsonElement("categoryid")]
 		[BsonRepresentation(BsonType.ObjectId)]
@@ -35,13 +35,24 @@ namespace tenis_pro_back.Models
 		[BsonRepresentation(BsonType.ObjectId)]
 		public required string ProfileId{ get; set; }  // ID profile
 
-		[BsonElement("active")]
-		public bool Active { get; set; } = true;
+		[BsonElement("status")]
+		public required UserStatus Status{ get; set; }
 
         [BsonElement("birthdate")]
         public string? BirthDate { get; set; }
 
         [BsonElement("identification")]
         public string? Identification { get; set; }
+
+        [BsonElement("password")]
+        public string? Password { get; set; }
     }
+
+	public enum UserStatus  :Int16
+	{
+		Disabled=  0,
+		Enabled= 1,
+		PendingActivation=2
+	}
+
 }

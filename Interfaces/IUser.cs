@@ -7,8 +7,10 @@ namespace tenis_pro_back.Interfaces
         Task<IEnumerable<User>> GetAll();
         Task<IEnumerable<User>> GetByCategory(string categoryId);
         Task<User> GetById(string id);
-        Task Post(User user);
+        Task<User> Post(User user);
         Task Put(string id, User user);
         Task Delete(string id);
+        Task<User?> GetByProfile(string profileId);
+        Task<User?> GetByEmail(string email);
     }
 }

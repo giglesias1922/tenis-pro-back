@@ -11,7 +11,9 @@ namespace tenis_pro_back.Interfaces
         Task Delete(string id);
 
         Task<List<User>> GetUsersToRegistrationAsync(string categoryId, string tournamentId);
-        Task<List<User>> GetUsersRegistered(string tournamentId);
+
+        Task<List<RegistrationUserDto>> GetRegistratedUsers(string tournamentId);
+
 
     }
 }

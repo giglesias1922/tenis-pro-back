@@ -1,4 +1,5 @@
 ﻿using MongoDB.Driver;
+using System.Text.Json;
 using tenis_pro_back.Interfaces;
 using tenis_pro_back.Models;
 using tenis_pro_back.Models.Dto;
@@ -8,90 +9,124 @@ namespace tenis_pro_back.Repositories
 {
     public class MatchesRepository:IMatch
     {
-        private readonly IMongoCollection<Match> _matches;
+        private readonly IMongoCollection<Match> _matchesCollection;
+        private readonly IRegistration _registrationRepository;
         private readonly ITournament _tournamentsRepository;
         private readonly IUser _usersRepository;
 
-        public MatchesRepository(IMongoDatabase database, ITournament tournamentsRepository, IUser usersRepository)
+        public MatchesRepository(IMongoDatabase database, ITournament tournamentsRepository, IUser usersRepository, IRegistration registrationRepository)
         {
-            _matches = database.GetCollection<Match>("matches");
+            _matchesCollection = database.GetCollection<Match>("matches");
             _tournamentsRepository = tournamentsRepository;
             _usersRepository = usersRepository;
+            _registrationRepository = registrationRepository;
         }
         public async Task Post(Match match)
         {
-            await _matches.InsertOneAsync(match);
+            await _matchesCollection.InsertOneAsync(match);
         }
 
         public async Task<List<Match>> GetScheduledMatchesAsync()
         {
-            return await _matches.Find(m => m.Status == MatchStatus.Scheduled)
+            return await _matchesCollection.Find(m => m.Status == MatchStatus.Scheduled)
                                      .Project<Match>(Builders<Match>.Projection.Exclude(m => m.History))
                                      .ToListAsync();
         }
 
         public async Task<List<MatchDto>> GetAll()
         {
-            List<Match> list = await _matches.Find(t => true).ToListAsync();
+            List<Match> matches = await _matchesCollection.Find(t => true).ToListAsync();
 
-            var tournaments = await _tournamentsRepository.GetTournamentsActives();
+            var tournaments = await _tournamentsRepository.GetAll();
 
-            var users = await _usersRepository.GetAll();
+            List<MatchDto> matchesDto = new List<MatchDto>();
 
-            var tournamentsMap = tournaments.ToDictionary(t => t.Id!, t => new { t.Description, t.TournamentType });
-
-            var usersMap = users.ToDictionary(u => u.Id!, u => $"{u.LastName} {u.Name}");
-
-            List<MatchDto> matches = new List<MatchDto>();
-
-            foreach(Match match in list)
+            foreach(Match match in matches)
             {
-                var tournament = tournamentsMap.ContainsKey(match.TournamentId)
-                         ? tournamentsMap[match.TournamentId]
-                         : null;
+                var tournament = tournaments.FirstOrDefault(w => w.Id == match.TournamentId);
 
                 string tournamentDesc = tournament?.Description ?? "N/A";
                 TournamentType tournamentType = tournament?.TournamentType?? throw new ApplicationException("Tournament type not found");
                 string tournamentTypeDesc = tournament?.TournamentType.ToString() ?? "Unknown";
 
-                string playerAName = GetFormattedPlayers(match.PlayersA, tournamentType, usersMap);
-                string playerBName = GetFormattedPlayers(match.PlayersB, tournamentType, usersMap);
+                Registration registration1 = await _registrationRepository.GetById(match.registrations[0]);
+                Registration registration2 = await _registrationRepository.GetById(match.registrations[1]);
 
-                matches.Add(new MatchDto()
+                string playerAName = registration1?.DisplayName ?? "Desconocido";
+                string playerBName = registration2?.DisplayName ?? "Desconocido";
+
+                matchesDto.Add(new MatchDto()
                 {
+                    Id = match.Id,
                     TournamentDescription = tournamentDesc,
                     Type = tournamentType,
                     TournamentTypeDescription = tournamentTypeDesc,
                     PlayerAName = playerAName,
                     PlayerBName = playerBName,
                     Status = match.Status,
+                    StatusDescription = match.Status.ToString(),
+                    LocationDescription = tournament.LocationDescription,
+                    CategoryDescription = tournament.CategoryDescription
                 });
             }
 
-            return matches;
+            return matchesDto;
         }
 
-        private string GetFormattedPlayers(List<string> playerIds, TournamentType tournamentType, Dictionary<string, string> usersMap)
+        public async Task<MatchDto?> GetById(string id)
         {
-            var names = playerIds.Select(id => usersMap.ContainsKey(id) ? usersMap[id] : "N/A");
+            var match = await _matchesCollection.Find(m => m.Id == id).FirstOrDefaultAsync();
 
-            if (tournamentType == TournamentType.Double)
-                return string.Join(" / ", names);
-            else // Single o default
-                return names.FirstOrDefault() ?? "N/A";
-        }
+            
 
-        public async Task<Match?> GetById(string id)
-        {
-            return await _matches.Find(m => m.Id == id).FirstOrDefaultAsync();
+            var tournament = await _tournamentsRepository.GetById(match.TournamentId);
+
+            string tournamentDesc = tournament?.Description ?? "N/A";
+                TournamentType tournamentType = tournament?.TournamentType ?? throw new ApplicationException("Tournament type not found");
+                string tournamentTypeDesc = tournament?.TournamentType.ToString() ?? "Unknown";
+
+            Registration registracion1 = await _registrationRepository.GetById(match.registrations[0]);
+            Registration registracion2 = await _registrationRepository.GetById(match.registrations[1]);
+
+
+            return new MatchDto()
+            {
+                Id = id,
+                TournamentDescription = tournamentDesc,
+                Type = tournamentType,
+                TournamentTypeDescription = tournamentTypeDesc,
+                PlayerAName = registracion1.DisplayName,
+                PlayerBName = registracion2.DisplayName,
+                RegistrationAId = registracion1.Id,
+                RegistrationBId = registracion2.Id,
+                Status = match.Status,
+                LocationDescription = tournament.LocationDescription,
+                CategoryDescription = tournament.CategoryDescription
+            };
         }
 
         public async Task<List<MatchHistory>> GetMatchHistoryAsync(string id)
         {
-            var match = await _matches.Find(m => m.Id == id)
+            var matches = await _matchesCollection.Find(m => m.Id == id)
                                          .Project(m => m.History)
                                          .FirstOrDefaultAsync();
-            return match ?? new List<MatchHistory>();
+
+            List<MatchHistory> list = new();
+
+            foreach(var match in matches )
+            {
+                list.Add(new MatchHistory
+                {
+                    Date = match.Date,
+                    Notes = match.Notes,
+                    Status = match.Status
+
+                });
+            }
+
+            var sortedHistory = list.OrderBy(h => h.Date).ToList();
+
+            return sortedHistory;
         }
 
         public async Task UpdateMatchStatusAsync(string id, MatchStatus status, string? notes)
@@ -100,22 +135,27 @@ namespace tenis_pro_back.Repositories
                 .Set(m => m.Status, status)
                 .Push(m => m.History, new MatchHistory { Status = status, Notes = notes });
 
-            await _matches.UpdateOneAsync(m => m.Id == id, update);
+            await _matchesCollection.UpdateOneAsync(m => m.Id == id, update);
         }
 
-        public async Task AddMatchResultAsync(string id, string result)
+        public async Task AddMatchResultAsync(string id, MatchResultDto result)
         {
-            var update = Builders<Match>.Update
-                .Set(m => m.Result, result)
-                .Set(m => m.Status, MatchStatus.Completed)
-                .Push(m => m.History, new MatchHistory { Status = MatchStatus.Completed });
+            var filter = Builders<Match>.Filter.Eq(m => m.Id, id);
 
-            await _matches.UpdateOneAsync(m => m.Id == id, update);
+            var resultField = new StringFieldDefinition<Match, MatchResultDto>("Result");  // Definir el campo explícitamente
+
+            var update = Builders<Match>.Update
+                .Set(resultField, result)  // Usa el FieldDefinition aquí
+                .Set("Status", Match.MatchStatus.Completed)
+                .Push("History", new Match.MatchHistory { Status = Match.MatchStatus.Completed });
+
+            await _matchesCollection.UpdateOneAsync(filter, update);
         }
+
 
         public async Task Delete(string id)
         {
-            await _matches.DeleteOneAsync(c => c.Id == id);
+            await _matchesCollection.DeleteOneAsync(c => c.Id == id);
         }
 
     }

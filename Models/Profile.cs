@@ -16,8 +16,14 @@ namespace tenis_pro_back.Models
 		[BsonRepresentation(BsonType.ObjectId)]
 		public required List<string>? Functionalities { get; set; }  // IDs de las funcionalidades
 
-		[BsonElement("esadmin")]
-		public required bool EsAdmin { get; set; }
+		[BsonElement("type")]
+		public required ProfileType Type { get; set; }
 
+		public enum ProfileType : Int16
+		{
+            Admin=1,
+            Organizer = 2,
+            Players = 3
+        }
     }
 }

@@ -6,9 +6,10 @@ namespace tenis_pro_back.Interfaces
     {
         Task<IEnumerable<Profile>> GetAll();
         Task<Profile> GetById(string id);
-        Task Post(Profile profile);
+        Task<Profile> Post(Profile profile);
         Task Put(string id, Profile profile);
         Task Delete(string id);
+        Task<Profile?> GetByType(Profile.ProfileType type);
 
     }
 }
