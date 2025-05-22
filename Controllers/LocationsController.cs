@@ -3,10 +3,12 @@ using tenis_pro_back.Repositories;
 using Microsoft.AspNetCore.Mvc;
 using tenis_pro_back.Interfaces;
 using tenis_pro_back.Helpers;
+using Microsoft.AspNetCore.Authorization;
 
 namespace tenis_pro_back.Controllers
 {
-	[Route("api/[controller]")]
+    [Authorize]
+    [Route("api/[controller]")]
 	[ApiController]
 	public class LocationsController : ControllerBase
 	{
@@ -21,6 +23,7 @@ namespace tenis_pro_back.Controllers
         }
 
         // GET: api/location
+
         [HttpGet]
 		public async Task<ActionResult<IEnumerable<Location>>> GetAll()
 		{

@@ -1,5 +1,6 @@
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+锘縰sing Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using MongoDB.Bson.IO;
 using MongoDB.Driver;
 using Serilog;
 using System.Text;
@@ -27,7 +28,7 @@ builder.Logging.AddSerilog();
 
 builder.Services.AddHttpContextAccessor();
 
-// Configuraci髇 de MongoDB
+// Configuraci贸n de MongoDB
 builder.Services.Configure<MongoDbSettings>(
     builder.Configuration.GetSection("MongoDbSettings"));
 
@@ -68,29 +69,23 @@ builder.Services.AddSingleton<EncryptionHelper>();
 builder.Services.AddSingleton<JwtHelper>();
 builder.Services.AddSingleton<EmailHelper>();
 
-// Configuraci髇 de CORS
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowReactNativeApp", builder =>
-    {
-        builder.AllowAnyOrigin()
-            .AllowAnyMethod()
-            .AllowAnyHeader();
-    });
-
-    //options.AddPolicy("AllowAllOrigins",
-    //        builder =>
-    //        {
-    //            builder.WithOrigins("http://localhost:5174") // Direcci髇 del frontend React
-    //                   .AllowAnyMethod()
-    //                   .AllowAnyHeader()
-    //                   .AllowCredentials(); // Importante para permitir cookies
-    //        });
-
+    options.AddPolicy("AllowFrontend",
+        policy =>
+        {
+            policy.WithOrigins("http://localhost:5173") // Origen de tu frontend
+                  .AllowAnyMethod()
+                  .AllowAnyHeader()
+                  .WithExposedHeaders("Authorization") // Permite el encabezado Authorization
+                  .AllowCredentials(); // Permite el env铆o de credenciales (cookies, cabeceras de autorizaci贸n)
+        });
 });
 
-// Configuraci髇 de autenticaci髇 con JWT
+
+// Configuraci贸n de autenticaci贸n con JWT
 var encryptionHelper = new EncryptionHelper(builder.Configuration);
+
 var encryptedKey = builder.Configuration["JwtSettings:Secret"];
 var secretKey = encryptionHelper.Decrypt(encryptedKey); // Desencripta la clave antes de usarla
 
@@ -109,6 +104,23 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             RequireExpirationTime = true,
             ValidateLifetime = true
         };
+        options.Events = new JwtBearerEvents
+        {
+            OnAuthenticationFailed = context =>
+            {
+                // Aqu铆 puedes registrar el error si lo deseas
+                return Task.CompletedTask;
+            },
+            OnChallenge = context =>
+            {
+                // Personaliza la respuesta cuando el token es inv谩lido
+                context.HandleResponse();
+                context.Response.StatusCode = 401;
+                context.Response.ContentType = "application/json";
+                var result = System.Text.Json.JsonSerializer.Serialize(new { message = "Token inv谩lido o expirado" });
+                return context.Response.WriteAsync(result);
+            }
+        };
     });
 
 builder.Services.AddAuthorization();
@@ -122,14 +134,16 @@ builder.WebHost.ConfigureKestrel(options =>
 
 var app = builder.Build();
 
+app.UseRouting();
+
 var loggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
 HandleErrorHelper.Initialize(loggerFactory);
 
-app.UseCors("AllowReactNativeApp");
+app.UseCors("AllowFrontend");
 
-// Configurar autenticaci髇 y autorizaci髇
-app.UseAuthentication();
-app.UseAuthorization();
+// Configurar autenticaci贸n y autorizaci贸n
+app.UseAuthentication(); // Habilita la autenticaci贸n
+app.UseAuthorization();  // Habilita la autorizaci贸n
 
 if (app.Environment.IsDevelopment())
 {
@@ -141,6 +155,6 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-app.UseRouting();
+
 app.MapControllers();
 app.Run();

@@ -12,10 +12,12 @@ using System.Text;
 using tenis_pro_back.Helpers;
 using tenis_pro_back.Interfaces;
 using tenis_pro_back.Models;
+using tenis_pro_back.Models.Dto;
 using tenis_pro_back.Repositories;
 
 namespace tenis_pro_back.Controllers
 {
+    [Route("api/[controller]")]
     public class AuthController : Controller
     {
         private readonly IProfile _profileRepository;
@@ -26,7 +28,7 @@ namespace tenis_pro_back.Controllers
         private readonly JwtHelper _jwtHelper;
         private readonly IHttpContextAccessor _httpContextAccessor;
 
-        public AuthController(IProfile profileRepository, IUser userRepository, IUserActivationToken userActivationToken, EmailHelper emailHelper, IHttpContextAccessor httpContextAccessor, JwtHelper jwtHelper)
+        public AuthController(IProfile profileRepository, IUser userRepository, IUserActivationToken userActivationToken, EmailHelper emailHelper, IHttpContextAccessor httpContextAccessor, JwtHelper jwtHelper, IConfiguration config)
         {
             _profileRepository = profileRepository;
             _userRepository = userRepository;
@@ -34,6 +36,7 @@ namespace tenis_pro_back.Controllers
             _emailHelper = emailHelper;
             _httpContextAccessor = httpContextAccessor;
             _jwtHelper = jwtHelper;
+            _config = config;
         }
 
         public class LoginDto
@@ -42,7 +45,7 @@ namespace tenis_pro_back.Controllers
             public required string Password { get; set; }
         }
 
-
+        [AllowAnonymous]
         [HttpGet("activate")]
         public async Task<IActionResult> Activate([FromQuery] string token)
         {
@@ -60,7 +63,7 @@ namespace tenis_pro_back.Controllers
                 if (user == null)
                     return BadRequest("Usuario no encontrado.");
 
-                user.Status = UserStatus.Enabled;
+                user.Status = UserStatus.ChangePassword;
 
                 await _userRepository.Put(user.Id!, user);
 
@@ -75,12 +78,12 @@ namespace tenis_pro_back.Controllers
         }
 
         [AllowAnonymous]
-        [HttpGet("initialize")]
+        [HttpPost("initialize")]
         public async Task<IActionResult> Initialize()
         {
             try
             {
-                string? EmailAdmin = _config["EMailAdmin"];
+                string? EmailAdmin = _config["EMail:Admin"];
 
                 Profile? profileAdmin = await _profileRepository.GetByType( Profile.ProfileType.Admin);
 
@@ -95,6 +98,7 @@ namespace tenis_pro_back.Controllers
 
                     profileAdmin = await _profileRepository.Post(newProfile);
 
+
                     if (String.IsNullOrEmpty(EmailAdmin)) throw new ApplicationException("EmailAdmin not found.");
 
                     User? userAdmin = await _userRepository.GetByProfile(profileAdmin.Id);
@@ -102,8 +106,8 @@ namespace tenis_pro_back.Controllers
                     if(userAdmin == null)
                     {
                         var hasher = new PasswordHasher<object>();
-                        string password = "Peter998!";
-                        string hashedPassword = hasher.HashPassword(null, password);
+                        string hashedPassword = "AQAAAAIAAYagAAAAEN2aNG67QNjn+MQUW8LTyXF0lMmBRcX0Aw0cbBOGEXEWfkTv87B28M…";
+                        //string hashedPassword = hasher.HashPassword(null, password);
 
                         User newUser = new User()
                         {
@@ -117,70 +121,90 @@ namespace tenis_pro_back.Controllers
 
                         await _userRepository.Post(newUser);
                     }
+
+                    //Agrega los demas perfiles (sacar si hago abm
+                    newProfile = new Profile()
+                    {
+                        Functionalities = new List<string>(),
+                        Name = "Jugador",
+                        Type = Profile.ProfileType.Players
+                    };
+
+                    await _profileRepository.Post(newProfile);
+
+                    newProfile = new Profile()
+                    {
+                        Functionalities = new List<string>(),
+                        Name = "Organizador",
+                        Type = Profile.ProfileType.Organizer
+                    };
+
+                    await _profileRepository.Post(newProfile);
+
                 }
 
-                return Ok();
+                return Ok(new
+                {
+                    Message = "Inicialización completada correctamente.",
+                    AdminCreated = true,
+                    ProfilesCreated = true
+                });
             }
             catch (Exception ex)
             {
                 HandleErrorHelper.LogError(ex);
-                return BadRequest(ex.Message);
+                return BadRequest(new { error = ex.Message });
 
             }
         }
 
-
+        [AllowAnonymous]
         [HttpPost("register")]
-        public async Task<IActionResult> Register([FromBody] User user)
+        public async Task<IActionResult> Register([FromBody] RegisterUserDto user)
         {
             try
             {
                 if (await _userRepository.GetByEmail(user.Email)!=null)
                     return BadRequest("Email ya está registrado.");
 
-                if (String.IsNullOrEmpty(user.Password))
-                    return BadRequest("No se puede dar de alta un usuario sin contraseña.");
-
-                var hasher = new PasswordHasher<object>();
-                string passwordHashed = hasher.HashPassword(null, user.Password);
-
                 Profile? profilePlayer = await _profileRepository.GetByType(Profile.ProfileType.Players);
 
+                if (profilePlayer == null) throw new ApplicationException("No se puede encontrar el perfil [Jugador].");
 
                 User newUser = new User()
                 {
-                    LastName = "Admin",
-                    Name = "Admin",
+                    LastName = user.LastName,
+                    Name = user.Name,
                     ProfileId = profilePlayer.Id,
                     Status = UserStatus.PendingActivation,
                     Email = user.Email,
-                    Password = passwordHashed,
                     BirthDate = user.BirthDate,
-                    CategoryId = user.CategoryId,
-                    Comment = user.Comment,
+                    CategoryId = user.CategoryId
                     
                 };
 
-                user = await _userRepository.Post(user);
+                newUser = await _userRepository.Post(newUser);
 
                 // Crear token de activación
                 var token = new UserActivationToken
                 {
-                    UserId = user.Id,
+                    UserId = newUser.Id,
                     Token = Guid.NewGuid().ToString(),
                     Expiration =  DateTime.UtcNow.AddHours(24),
-                    User = user
+                    User = newUser
                 };
 
                 await _userActivationToken.Post(token);
 
                 var request = _httpContextAccessor.HttpContext?.Request;
+                
+                var activationUrl="";
 
                 if (request != null)
                 {
                     var scheme = request.Scheme;           // http o https
                     var host = request.Host.Value;         // localhost:5000 o dominio
-                    var activationUrl = $"{scheme}://{host}/activate?token={token.Token}";
+                    activationUrl = $"{scheme}://{host}/activate?token={token.Token}";
                 }
                 
                 // Simula envío de email (puedes usar MailKit, SendGrid, etc.)
@@ -191,11 +215,12 @@ namespace tenis_pro_back.Controllers
             catch (Exception ex)
             {
                 HandleErrorHelper.LogError(ex);
-                return BadRequest(ex.Message);
+                return BadRequest(new { error = ex.Message });
 
             }
         }
 
+        [AllowAnonymous]
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginDto dto)
         {
@@ -206,29 +231,30 @@ namespace tenis_pro_back.Controllers
                 if (user == null)
                     return Unauthorized("Usuario inexistente.");
 
+                
                 var hasher = new PasswordHasher<object>();
-                string passwordHashed = hasher.HashPassword(null, dto.Password);
+                var result = hasher.VerifyHashedPassword(null, user.Password, dto.Password);
 
-                if (dto.Password != user.Password)
-                    return Unauthorized("Credenciales inválidas.");
+                if (result != PasswordVerificationResult.Success)
+                    return Unauthorized(new { error = "Credenciales inválidas." });
 
                 if (user.Status != UserStatus.Enabled)
-                    return Unauthorized("Cuenta no activada.");
+                    return Unauthorized(new { error = "Cuenta no activada." });
 
 
-                var token = _jwtHelper.GenerateToken(user.Id, user.Email, user.ProfileId);
+                var token = _jwtHelper.GenerateToken(user);
 
                 // Configuramos las opciones para la cookie
-                var cookieOptions = new CookieOptions
-                {
-                    HttpOnly = true,     // No accesible desde JavaScript
-                    Secure = true,       // Solo para HTTPS
-                    SameSite = SameSiteMode.Strict,  // Política de SameSite (evita CSRF)
-                    Expires = DateTime.UtcNow.AddDays(7) // Duración de la cookie (7 días en este caso)
-                };
+                //var cookieOptions = new CookieOptions
+                //{
+                //    HttpOnly = true,     // No accesible desde JavaScript
+                //    Secure = true,       // Solo para HTTPS
+                //    SameSite = SameSiteMode.Strict,  // Política de SameSite (evita CSRF)
+                //    Expires = DateTime.UtcNow.AddDays(7) // Duración de la cookie (7 días en este caso)
+                //};
 
-                // Enviamos el token como una cookie HttpOnly
-                Response.Cookies.Append("jwt", token, cookieOptions);
+                //// Enviamos el token como una cookie HttpOnly
+                //Response.Cookies.Append("jwt", token, cookieOptions);
 
 
                 return Ok(new { token });
@@ -236,7 +262,7 @@ namespace tenis_pro_back.Controllers
             catch (Exception ex)
             {
                 HandleErrorHelper.LogError(ex);
-                return BadRequest(ex.Message);
+                return BadRequest(new { error = ex.Message });
 
             }
         }

@@ -8,9 +8,9 @@ namespace tenis_pro_back.Repositories
     {
         private readonly IMongoCollection<UserActivationToken> _userActivationToken;
 
-        public UserActivationTokenRepository(IMongoCollection<UserActivationToken> userActivationToken)
+        public UserActivationTokenRepository(IMongoDatabase database)
         {
-            _userActivationToken = userActivationToken;
+            _userActivationToken = database.GetCollection<UserActivationToken>("UserActivationTokens");
         }
 
         public async Task<UserActivationToken?> GetByToken(string token)

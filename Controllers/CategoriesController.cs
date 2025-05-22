@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using tenis_pro_back.Helpers;
 using tenis_pro_back.Interfaces;
 using tenis_pro_back.Models;
@@ -19,6 +20,7 @@ namespace tenis_pro_back.Controllers
         }
 
         // GET: api/categories
+        [AllowAnonymous]
         [HttpGet]
 		public async Task<ActionResult<List<Category>>> Get()
 		{
@@ -35,8 +37,9 @@ namespace tenis_pro_back.Controllers
 			}
         }
 
-		// GET: api/categories/{id}
-		[HttpGet("{id}")]
+        // GET: api/categories/{id}
+        [AllowAnonymous]
+        [HttpGet("{id}")]
 		public async Task<ActionResult<Category>> GetCategoryById(string id)
 		{
 			try
@@ -53,8 +56,9 @@ namespace tenis_pro_back.Controllers
 			}
         }
 
-		// POST: api/categories
-		[HttpPost]
+        // POST: api/categories
+        [Authorize]
+        [HttpPost]
 		public async Task<ActionResult> Create(Category category)
 		{
 			try
@@ -70,8 +74,9 @@ namespace tenis_pro_back.Controllers
             }
         }
 
-		// PUT: api/categories/{id}
-		[HttpPut("{id}")]
+        // PUT: api/categories/{id}
+        [Authorize]
+        [HttpPut("{id}")]
 		public async Task<ActionResult> Update(string id, Category category)
 		{
 			try
@@ -91,6 +96,7 @@ namespace tenis_pro_back.Controllers
         }
 
         // DELETE: api/categories/{id}
+        [Authorize]
         [HttpDelete("{id}")]
         public async Task<ActionResult> Delete(string id)
         {

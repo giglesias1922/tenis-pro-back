@@ -5,9 +5,11 @@ using tenis_pro_back.Interfaces;
 using tenis_pro_back.Models;
 using tenis_pro_back.Models.Dto;
 using tenis_pro_back.Helpers;
+using Microsoft.AspNetCore.Authorization;
 
 namespace tenis_pro_back.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class MatchesController : ControllerBase

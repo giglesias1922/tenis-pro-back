@@ -52,7 +52,8 @@ namespace tenis_pro_back.Models
 	{
 		Disabled=  0,
 		Enabled= 1,
-		PendingActivation=2
-	}
+		PendingActivation=2,
+        ChangePassword=3
+    }
 
 }

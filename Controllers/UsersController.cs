@@ -7,8 +7,10 @@ using tenis_pro_back.Models;
 
 namespace tenis_pro_back.Controllers
 {
+    
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class UsersController : ControllerBase
     {
         private readonly IUser _userRepository;
@@ -86,7 +88,6 @@ namespace tenis_pro_back.Controllers
         }
 
         // POST: api/users
-        [Authorize]
         [HttpPost]
         public async Task<ActionResult> Create(User user)
         {
@@ -105,7 +106,6 @@ namespace tenis_pro_back.Controllers
         }
 
         // PUT: api/users/{id}
-        [AllowAnonymous]
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(string id, User user)
         {
@@ -132,7 +132,6 @@ namespace tenis_pro_back.Controllers
 
         
         // DELETE: api/users/{id}
-        [Authorize]
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(string id)
         {

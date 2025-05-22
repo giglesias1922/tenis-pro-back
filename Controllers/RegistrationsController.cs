@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using tenis_pro_back.Helpers;
 using tenis_pro_back.Interfaces;
 using tenis_pro_back.Models;
@@ -6,6 +7,7 @@ using tenis_pro_back.Models.Dto;
 
 namespace tenis_pro_back.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class RegistrationsController : ControllerBase
