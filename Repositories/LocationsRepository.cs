@@ -11,8 +11,8 @@ namespace tenis_pro_back.Repositories
 
         public LocationsRepository(IMongoDatabase database)
 		{
-			_locations = database.GetCollection<Location>("locations");
-            _tournaments = database.GetCollection<Tournament>("tournaments");
+			_locations = database.GetCollection<Location>("Locations");
+            _tournaments = database.GetCollection<Tournament>("Tournaments");
         }
 
 		public async Task<List<Location>> GetAll()

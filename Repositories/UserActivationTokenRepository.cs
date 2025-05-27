@@ -18,6 +18,11 @@ namespace tenis_pro_back.Repositories
             return await _userActivationToken.Find(c => c.Token == token).FirstOrDefaultAsync();
         }
 
+        public async Task<UserActivationToken>? GetByUserid(string userId)
+        {
+            return await _userActivationToken.Find(c => c.UserId == userId).FirstOrDefaultAsync();
+        }
+
         public async Task Post(UserActivationToken userActivationToken)
         {
             await _userActivationToken.InsertOneAsync(userActivationToken);

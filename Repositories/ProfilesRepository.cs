@@ -10,7 +10,7 @@ namespace tenis_pro_back.Repositories
 
 		public ProfilesRepository(IMongoDatabase database)
 		{
-            _profiles = database.GetCollection<Profile>("profiles");
+            _profiles = database.GetCollection<Profile>("Profiles");
 		}
 
 		public async Task<IEnumerable<Profile>> GetAll()

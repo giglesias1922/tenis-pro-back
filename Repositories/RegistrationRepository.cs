@@ -15,7 +15,7 @@ namespace tenis_pro_back.Repositories
 
         public RegistrationRepository(IMongoDatabase database, IUser userRepository, ITournament tournament, IMapper mapper)
         {
-            _registration = database.GetCollection<Registration>("registrations");
+            _registration = database.GetCollection<Registration>("Registrations");
             _userRepository = userRepository;
             _tournamentRepository = tournament;
             _mapper = mapper;

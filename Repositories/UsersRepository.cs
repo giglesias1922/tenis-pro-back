@@ -14,7 +14,7 @@ namespace tenis_pro_back.Repositories
 
 		public UsersRepository(IMongoDatabase database)
 		{
-			_users = database.GetCollection<User>("users");
+			_users = database.GetCollection<User>("Users");
 		}
 
 		public async Task<IEnumerable<User>> GetAll()

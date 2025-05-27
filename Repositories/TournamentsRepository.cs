@@ -17,7 +17,7 @@ namespace tenis_pro_back.Repositories
 
         public TournamentsRepository(IMongoDatabase database, ICategory categoriesRepository, ILocation locationsRepository)
         {
-            _tournaments = database.GetCollection<Tournament>("tournaments");
+            _tournaments = database.GetCollection<Tournament>("Tournaments");
             _categoriesRepository = categoriesRepository;
             _locationsRepository = locationsRepository;
         }

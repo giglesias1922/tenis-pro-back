@@ -8,5 +8,6 @@ namespace tenis_pro_back.Interfaces
         
         Task<UserActivationToken?> GetByToken(string token);
         Task Delete(string token);
+        Task<UserActivationToken?> GetByUserid(string userId);
     }
 }

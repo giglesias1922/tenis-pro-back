@@ -1,11 +1,20 @@
-﻿namespace tenis_pro_back.Models
+﻿using MongoDB.Bson.Serialization.Attributes;
+using MongoDB.Bson;
+
+namespace tenis_pro_back.Models
 {
     public class UserActivationToken
     {
-        public required string UserId { get; set; }
-        public required string Token { get; set; } 
-        public required DateTime Expiration { get; set; }
+        [BsonId]
+        [BsonRepresentation(BsonType.ObjectId)]
+        public string? Id { get; set; }
 
-        public User? User { get; set; }
+        [BsonElement("userid")]
+        [BsonRepresentation(BsonType.ObjectId)]        
+        public required string UserId { get; set; }
+        [BsonElement("token")]
+        public required string Token { get; set; }
+        [BsonElement("expiration")]
+        public required DateTime Expiration { get; set; }
     }
 }

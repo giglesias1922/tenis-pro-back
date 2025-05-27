@@ -11,8 +11,8 @@ namespace tenis_pro_back.Repositories
 
         public CategoriesRepository(IMongoDatabase database)
         {
-            _categories = database.GetCollection<Category>("categories");
-            _tournaments = database.GetCollection<Tournament>("tournaments");
+            _categories = database.GetCollection<Category>("Categories");
+            _tournaments = database.GetCollection<Tournament>("Tournaments");
         }
 
         public async Task<List<Category>> GetAll()

@@ -186,31 +186,11 @@ namespace tenis_pro_back.Controllers
                 newUser = await _userRepository.Post(newUser);
 
                 // Crear token de activación
-                var token = new UserActivationToken
-                {
-                    UserId = newUser.Id,
-                    Token = Guid.NewGuid().ToString(),
-                    Expiration =  DateTime.UtcNow.AddHours(24),
-                    User = newUser
-                };
-
-                await _userActivationToken.Post(token);
-
-                var request = _httpContextAccessor.HttpContext?.Request;
+                UserActivationToken token = await GetActivationToken(newUser);
                 
-                var activationUrl="";
+                await SendActivationEmail(token.Token, user.Email);
 
-                if (request != null)
-                {
-                    var scheme = request.Scheme;           // http o https
-                    var host = request.Host.Value;         // localhost:5000 o dominio
-                    activationUrl = $"{scheme}://{host}/activate?token={token.Token}";
-                }
-                
-                // Simula envío de email (puedes usar MailKit, SendGrid, etc.)
-                await _emailHelper.SendAsync(user.Email, "Activa tu cuenta", $"Haz clic aquí para activar tu cuenta: {activationUrl}");
-
-                return Ok("Usuario registrado. Revisa tu correo para activar la cuenta.");
+                return Ok(newUser);
             }
             catch (Exception ex)
             {
@@ -219,6 +199,73 @@ namespace tenis_pro_back.Controllers
 
             }
         }
+
+        private async Task<UserActivationToken> GenerateToken(string userId)
+        {
+            var token = new UserActivationToken
+            {
+                UserId = userId,
+                Token = Guid.NewGuid().ToString(),
+                Expiration = DateTime.UtcNow.AddHours(24)
+            };
+
+            await _userActivationToken.Post(token);
+
+            return token;
+
+        }
+
+        private bool IsTokenExpired(UserActivationToken token)
+        {
+            return (DateTime.UtcNow > token.Expiration);
+        }
+
+        private async Task<UserActivationToken> GetActivationToken(User oUser)
+        {
+            var user = await _userRepository.GetById(oUser.Id);
+
+            if (user == null)
+                throw new ApplicationException($"El usuario con email {oUser.Email} , no se encuentra registrado");
+
+            //Busca si ya habia algun token generado
+            UserActivationToken? token = await _userActivationToken.GetByUserid(oUser.Id);
+
+            //Si no tenia ningun token o el que esta expirado, genera uno nuevo
+            if (token == null)
+            {
+                //Si no habia nada, lo genera
+                return await GenerateToken(oUser.Id);
+            }
+            else if (IsTokenExpired(token))
+            {
+                await _userActivationToken.Delete(token.Token);
+                return await GenerateToken(oUser.Id);
+            }
+            else
+            {
+                return token;
+            }
+        }
+
+        private async Task SendActivationEmail(string token, string email)
+        {
+            var request = _httpContextAccessor.HttpContext?.Request;
+
+            var activationUrl = "";
+
+            if (request != null)
+            {
+                var scheme = request.Scheme;           // http o https
+                var host = request.Host.Value;         // localhost:5000 o dominio
+                activationUrl = $"{scheme}://{host}/api/auth/activate?token={token}";
+            }
+
+            // Simula envío de email (puedes usar MailKit, SendGrid, etc.)
+            await _emailHelper.SendAsync(email, "Activa tu cuenta", $"Haz clic aquí para activar tu cuenta: {activationUrl}");
+
+
+        }
+
 
         [AllowAnonymous]
         [HttpPost("login")]

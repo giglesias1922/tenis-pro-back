@@ -10,7 +10,7 @@ namespace tenis_pro_back.Repositories
 		
         public FunctionalitiesRepository(IMongoDatabase database)
         {
-            _Functionalities = database.GetCollection<Functionality>("functionalities");
+            _Functionalities = database.GetCollection<Functionality>("Functionalities");
         }
 
         public async Task<List<Functionality>> GetAll()
