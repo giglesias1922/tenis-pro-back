@@ -159,6 +159,24 @@ namespace tenis_pro_back.Controllers
         }
 
         [AllowAnonymous]
+        [HttpPost("ResentActivationEmail")]
+        public async Task<IActionResult> ResentActivationEmail([FromBody] User oUser)
+        {
+            try
+            {
+                UserActivationToken oToken = await GetActivationToken(oUser);
+
+                return Ok(new { token=oToken.Token });
+            }
+            catch (Exception ex)
+            {
+                HandleErrorHelper.LogError(ex);
+                return BadRequest(new { error = ex.Message });
+
+            }
+        }
+
+        [AllowAnonymous]
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterUserDto user)
         {
@@ -276,17 +294,17 @@ namespace tenis_pro_back.Controllers
                 var user = await _userRepository.GetByEmail(dto.Email);
 
                 if (user == null)
-                    return Unauthorized("Usuario inexistente.");
+                    return Unauthorized(new { errorCode = Models.Enums.AuthErrorEnum.UserNotFound, errorDescription = "Usuario inexistente." });
 
-                
+
                 var hasher = new PasswordHasher<object>();
-                var result = hasher.VerifyHashedPassword(null, user.Password, dto.Password);
+                var result = hasher.VerifyHashedPassword(null, user.Password??"", dto.Password);
 
                 if (result != PasswordVerificationResult.Success)
-                    return Unauthorized(new { error = "Credenciales inválidas." });
+                    return Unauthorized(new { errorCode = Models.Enums.AuthErrorEnum.InvalidCredentials, errorDescription = "Credenciales inválidas." });
 
                 if (user.Status != UserStatus.Enabled)
-                    return Unauthorized(new { error = "Cuenta no activada." });
+                    return Unauthorized(new { errorCode = Models.Enums.AuthErrorEnum.UserDisabled, errorDescription = "Cuenta no activada.", userId = user.Id });
 
 
                 var token = _jwtHelper.GenerateToken(user);
