@@ -74,7 +74,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowFrontend",
         policy =>
         {
-            policy.WithOrigins("http://localhost:5173") // Origen de tu frontend
+            policy.WithOrigins("http://localhost:5173", "http://localhost:5174", "https://tenis-pro-react.netlify.app") // Agrega ambos puertos
                   .AllowAnyMethod()
                   .AllowAnyHeader()
                   .WithExposedHeaders("Authorization") // Permite el encabezado Authorization
