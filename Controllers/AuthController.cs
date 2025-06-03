@@ -14,6 +14,7 @@ using tenis_pro_back.Interfaces;
 using tenis_pro_back.Models;
 using tenis_pro_back.Models.Dto;
 using tenis_pro_back.Repositories;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace tenis_pro_back.Controllers
 {
@@ -63,7 +64,7 @@ namespace tenis_pro_back.Controllers
                 if (user == null)
                     return BadRequest("Usuario no encontrado.");
 
-                user.Status = UserStatus.ChangePassword;
+                user.Status = UserStatus.Enabled;
 
                 await _userRepository.Put(user.Id!, user);
 
@@ -189,6 +190,10 @@ namespace tenis_pro_back.Controllers
 
                 if (profilePlayer == null) throw new ApplicationException("No se puede encontrar el perfil [Jugador].");
 
+                var hasher = new PasswordHasher<object>();
+                var hashedPassword = hasher.HashPassword(null,user.Password);
+
+
                 User newUser = new User()
                 {
                     LastName = user.LastName,
@@ -197,8 +202,9 @@ namespace tenis_pro_back.Controllers
                     Status = UserStatus.PendingActivation,
                     Email = user.Email,
                     BirthDate = user.BirthDate,
-                    CategoryId = user.CategoryId
-                    
+                    CategoryId = user.CategoryId,
+                    Password = hashedPassword,
+                    Image = user.Image
                 };
 
                 newUser = await _userRepository.Post(newUser);
@@ -303,8 +309,12 @@ namespace tenis_pro_back.Controllers
                 if (result != PasswordVerificationResult.Success)
                     return Unauthorized(new { errorCode = Models.Enums.AuthErrorEnum.InvalidCredentials, errorDescription = "Credenciales inválidas." });
 
-                if (user.Status != UserStatus.Enabled)
-                    return Unauthorized(new { errorCode = Models.Enums.AuthErrorEnum.UserDisabled, errorDescription = "Cuenta no activada.", userId = user.Id });
+                if (user.Status == UserStatus.Disabled)
+                    return Unauthorized(new { errorCode = Models.Enums.AuthErrorEnum.UserDisabled, errorDescription = "Cuenta deshabilitada.", userId = user.Id });
+
+
+                if (user.Status == UserStatus.PendingActivation)
+                    return Unauthorized(new { errorCode = Models.Enums.AuthErrorEnum.UnactivatedUser, errorDescription = "Cuenta no activada.", userId = user.Id });
 
 
                 var token = _jwtHelper.GenerateToken(user);

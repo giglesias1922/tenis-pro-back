@@ -6,6 +6,7 @@
         InvalidCredentials =2,
         UserDisabled=3,
         AccountLocked=4,
+        UnactivatedUser = 5,
         Unauthorized
     }
 }

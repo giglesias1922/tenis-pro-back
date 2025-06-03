@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: tenis-pro-back
+    env: dotnet
+    plan: free
+    branch: master
+    buildCommand: "dotnet publish -c Release -o out"
+    startCommand: "dotnet out/tenis-pro-back.dll"
+    buildFilter:
+      paths:
+        - "**/*.cs"
+        - "**/*.csproj"
+        - "render.yaml"
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
