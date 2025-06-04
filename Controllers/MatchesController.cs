@@ -12,6 +12,7 @@ namespace tenis_pro_back.Controllers
     [Authorize]
     [ApiController]
     [Route("api/[controller]")]
+
     public class MatchesController : ControllerBase
     {
         private readonly IMatch _repository;
