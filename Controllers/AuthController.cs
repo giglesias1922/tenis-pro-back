@@ -1,10 +1,12 @@
 ﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using Org.BouncyCastle.Crypto.Generators;
 using Org.BouncyCastle.Pqc.Crypto.Lms;
+using System;
 using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Security.Claims;
@@ -24,26 +26,20 @@ namespace tenis_pro_back.Controllers
         private readonly IProfile _profileRepository;
         private readonly IUser _userRepository;
         private readonly IConfiguration _config;
-        private readonly IUserActivationToken _userActivationToken;
         private readonly EmailHelper _emailHelper;
+        private readonly EncryptionHelper _encryptionHelper;
         private readonly JwtHelper _jwtHelper;
         private readonly IHttpContextAccessor _httpContextAccessor;
 
-        public AuthController(IProfile profileRepository, IUser userRepository, IUserActivationToken userActivationToken, EmailHelper emailHelper, IHttpContextAccessor httpContextAccessor, JwtHelper jwtHelper, IConfiguration config)
+        public AuthController(IProfile profileRepository, IUser userRepository, EmailHelper emailHelper, IHttpContextAccessor httpContextAccessor, JwtHelper jwtHelper, IConfiguration config, EncryptionHelper encryptionHelper)
         {
             _profileRepository = profileRepository;
             _userRepository = userRepository;
-            _userActivationToken = userActivationToken;
             _emailHelper = emailHelper;
             _httpContextAccessor = httpContextAccessor;
             _jwtHelper = jwtHelper;
             _config = config;
-        }
-
-        public class LoginDto
-        {
-            public required string Email { get; set; }
-            public required string Password { get; set; }
+            _encryptionHelper = encryptionHelper;
         }
 
         [AllowAnonymous]
@@ -52,14 +48,16 @@ namespace tenis_pro_back.Controllers
         {
             try
             {
-                var activation = await _userActivationToken.GetByToken(token);
+                string? userId = _jwtHelper.GetUserIdFromToken(token);
 
-                if (activation == null || activation.Expiration < DateTime.UtcNow)
-                    return BadRequest("Token inválido o expirado.");
+                if (userId == null) return Unauthorized();
 
-                await _userActivationToken.Delete(activation.Token);
+                User? user = await _userRepository.GetById(userId);
 
-                User? user = await _userRepository.GetById(activation.UserId);
+                if (user == null)
+                    return BadRequest("Usuario no encontrado.");
+
+                
 
                 if (user == null)
                     return BadRequest("Usuario no encontrado.");
@@ -86,7 +84,7 @@ namespace tenis_pro_back.Controllers
             {
                 string? EmailAdmin = _config["EMail:Admin"];
 
-                Profile? profileAdmin = await _profileRepository.GetByType( Profile.ProfileType.Admin);
+                Profile? profileAdmin = await _profileRepository.GetByType(Profile.ProfileType.Admin);
 
                 if (profileAdmin == null)
                 {
@@ -104,7 +102,7 @@ namespace tenis_pro_back.Controllers
 
                     User? userAdmin = await _userRepository.GetByProfile(profileAdmin.Id);
 
-                    if(userAdmin == null)
+                    if (userAdmin == null)
                     {
                         var hasher = new PasswordHasher<object>();
                         string hashedPassword = "AQAAAAIAAYagAAAAEN2aNG67QNjn+MQUW8LTyXF0lMmBRcX0Aw0cbBOGEXEWfkTv87B28M…";
@@ -115,7 +113,7 @@ namespace tenis_pro_back.Controllers
                             LastName = "Admin",
                             Name = "Admin",
                             ProfileId = profileAdmin.Id,
-                            Status= UserStatus.Enabled,
+                            Status = UserStatus.Enabled,
                             Email = EmailAdmin,
                             Password = hashedPassword
                         };
@@ -161,13 +159,26 @@ namespace tenis_pro_back.Controllers
 
         [AllowAnonymous]
         [HttpPost("ResentActivationEmail")]
-        public async Task<IActionResult> ResentActivationEmail([FromBody] User oUser)
+        public async Task<IActionResult> ResentActivationEmail([FromBody] User user)
         {
             try
             {
-                UserActivationToken oToken = await GetActivationToken(oUser);
+                Int32 expirationTime = 60; //default
+                var JwtExpirationTime = _config["JwtExpirationTime:Activation"];
 
-                return Ok(new { token=oToken.Token });
+                if (JwtExpirationTime != null)
+                    expirationTime = Int32.Parse(JwtExpirationTime);
+
+
+                User? oUser = await _userRepository.GetById(user.Id);
+
+                if (oUser == null)
+                    throw new ApplicationException($"El usuario con email {user.Email} , no se encuentra registrado");
+
+
+                var token = _jwtHelper.GenerateToken(user, expirationTime);
+
+                return Ok(new { token = token });
             }
             catch (Exception ex)
             {
@@ -183,7 +194,7 @@ namespace tenis_pro_back.Controllers
         {
             try
             {
-                if (await _userRepository.GetByEmail(user.Email)!=null)
+                if (await _userRepository.GetByEmail(user.Email) != null)
                     return BadRequest("Email ya está registrado.");
 
                 Profile? profilePlayer = await _profileRepository.GetByType(Profile.ProfileType.Players);
@@ -191,7 +202,7 @@ namespace tenis_pro_back.Controllers
                 if (profilePlayer == null) throw new ApplicationException("No se puede encontrar el perfil [Jugador].");
 
                 var hasher = new PasswordHasher<object>();
-                var hashedPassword = hasher.HashPassword(null,user.Password);
+                var hashedPassword = hasher.HashPassword(null, user.Password);
 
 
                 User newUser = new User()
@@ -210,9 +221,17 @@ namespace tenis_pro_back.Controllers
                 newUser = await _userRepository.Post(newUser);
 
                 // Crear token de activación
-                UserActivationToken token = await GetActivationToken(newUser);
-                
-                await SendActivationEmail(token.Token, user.Email);
+                Int32 expirationTime = 60; //default
+
+                var JwtExpirationTime = _config["JwtExpirationTime:Activation"];
+
+                if (JwtExpirationTime != null)
+                    expirationTime = Int32.Parse(JwtExpirationTime);
+
+
+                var token = _jwtHelper.GenerateToken(newUser, expirationTime);
+
+                await SendActivationEmail(token, user.Email);
 
                 return Ok(newUser);
             }
@@ -221,53 +240,6 @@ namespace tenis_pro_back.Controllers
                 HandleErrorHelper.LogError(ex);
                 return BadRequest(new { error = ex.Message });
 
-            }
-        }
-
-        private async Task<UserActivationToken> GenerateToken(string userId)
-        {
-            var token = new UserActivationToken
-            {
-                UserId = userId,
-                Token = Guid.NewGuid().ToString(),
-                Expiration = DateTime.UtcNow.AddHours(24)
-            };
-
-            await _userActivationToken.Post(token);
-
-            return token;
-
-        }
-
-        private bool IsTokenExpired(UserActivationToken token)
-        {
-            return (DateTime.UtcNow > token.Expiration);
-        }
-
-        private async Task<UserActivationToken> GetActivationToken(User oUser)
-        {
-            var user = await _userRepository.GetById(oUser.Id);
-
-            if (user == null)
-                throw new ApplicationException($"El usuario con email {oUser.Email} , no se encuentra registrado");
-
-            //Busca si ya habia algun token generado
-            UserActivationToken? token = await _userActivationToken.GetByUserid(oUser.Id);
-
-            //Si no tenia ningun token o el que esta expirado, genera uno nuevo
-            if (token == null)
-            {
-                //Si no habia nada, lo genera
-                return await GenerateToken(oUser.Id);
-            }
-            else if (IsTokenExpired(token))
-            {
-                await _userActivationToken.Delete(token.Token);
-                return await GenerateToken(oUser.Id);
-            }
-            else
-            {
-                return token;
             }
         }
 
@@ -290,6 +262,121 @@ namespace tenis_pro_back.Controllers
 
         }
 
+        private async Task SendResetPasswordEmail(string token, string email)
+        {
+            var request = _httpContextAccessor.HttpContext?.Request;
+
+            var resetUrl = "";
+
+            if (request != null)
+            {
+                var scheme = request.Scheme;           // http o https
+                var host = request.Host.Value;         // localhost:5000 o dominio
+                resetUrl = $"{scheme}://{host}/api/auth/resetpassword?token={token}";
+            }
+
+            // Simula envío de email (puedes usar MailKit, SendGrid, etc.)
+            await _emailHelper.SendAsync(email, "Reseto de contraseña", $"Se ha solicitado un reseto de contraseña. Haz clic aquí para confirmar: {resetUrl}");
+
+
+        }
+
+
+        [AllowAnonymous]
+        [HttpGet("ResetPassword")]
+        public async Task<IActionResult> ResetPassword([FromQuery]string token)
+        {
+            try
+            {
+                string? userId = _jwtHelper.GetUserIdFromToken(token);
+
+                if (userId == null) return Unauthorized();
+
+                //Vuelve a buscar el usuario por si se elimino durante la vigencia del jwt token
+                User? user = await _userRepository.GetById(userId);
+
+                if (user == null)
+                    return BadRequest("Usuario no encontrado.");
+
+                user.Password = null;
+                user.Status = UserStatus.ChangePassword;
+
+                await _userRepository.Put(user.Id!, user);
+
+                var frontendUrl = _config["Frontend:ResetPasswordUrl"];
+                var redirectUrl = $"{frontendUrl}?token={token}";
+
+                return Redirect(redirectUrl);
+            }
+            catch (Exception ex)
+            {
+                HandleErrorHelper.LogError(ex);
+                return BadRequest(ex.Message);
+
+            }
+        }
+
+        [AllowAnonymous]
+        [HttpPost("ChangePassword")]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto request)
+        {
+            try
+            {
+                User? user = await _userRepository.GetByEmail(request.Email);
+
+                if (user == null)
+                    return Ok(new { success = false, message = "Usuario no encontrado." });
+
+                var hasher = new PasswordHasher<object>();
+                var hashedPassword = hasher.HashPassword(null, user.Password);
+
+
+                user.Password = hashedPassword;
+                user.Status = UserStatus.Enabled;
+
+                await _userRepository.Put(user.Id!, user);
+
+                return Ok(new { success=true});
+            }
+            catch (Exception ex)
+            {
+                HandleErrorHelper.LogError(ex);
+                return BadRequest(ex.Message);
+
+            }
+        }
+
+        [AllowAnonymous]
+        [HttpPut("ResetPasswordRequest")]
+        public async Task<IActionResult> ResetPasswordRequest([FromBody] ResetPasswordDto request)
+        {
+            try
+            {
+                Int32 expirationTime = 15; //default
+
+                var JwtExpirationTime = _config["JwtExpirationTime:ResetPassword"];
+
+                if (JwtExpirationTime != null)
+                    expirationTime = Int32.Parse(JwtExpirationTime);
+
+                Models.User? user = await _userRepository.GetByEmail(request.Email);
+
+                if (user == null)
+                    return Ok(new { success = false, message= "Email no registrado." });
+
+                var token = _jwtHelper.GenerateToken(user, expirationTime);
+
+                await SendResetPasswordEmail(token, user.Email);
+
+                return Ok(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                HandleErrorHelper.LogError(ex);
+                return BadRequest(ex.Message);
+
+            }
+        }
 
         [AllowAnonymous]
         [HttpPost("login")]
@@ -315,9 +402,8 @@ namespace tenis_pro_back.Controllers
 
                 if (user.Status == UserStatus.PendingActivation)
                     return Unauthorized(new { errorCode = Models.Enums.AuthErrorEnum.UnactivatedUser, errorDescription = "Cuenta no activada.", userId = user.Id });
-
-
-                var token = _jwtHelper.GenerateToken(user);
+                                
+                var token = _jwtHelper.GenerateToken(user,60);
 
                 // Configuramos las opciones para la cookie
                 //var cookieOptions = new CookieOptions

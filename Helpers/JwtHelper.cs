@@ -17,11 +17,10 @@ namespace tenis_pro_back.Helpers
             _secret = encryptionHelper.Decrypt(encryptedSecret);
         }
 
-        public string GenerateToken(User user)
+        public string GenerateToken(User user, int expireMinutes)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
             var key = Encoding.ASCII.GetBytes(_secret);
-            var expireMinutes = 60;
 
             var tokenDescriptor = new SecurityTokenDescriptor
             {
@@ -29,6 +28,7 @@ namespace tenis_pro_back.Helpers
                 {
                 new Claim("userId", user.Id),
                 new Claim(ClaimTypes.Name, user.Name + " " + user.LastName),
+                new Claim(ClaimTypes.Email, user.Email),
                 new Claim(ClaimTypes.Role, user.ProfileId),
                 new Claim("imageUrl", user.Image??"")
             }),
@@ -39,5 +39,35 @@ namespace tenis_pro_back.Helpers
             var token = tokenHandler.CreateToken(tokenDescriptor);
             return tokenHandler.WriteToken(token);
         }
+
+        public ClaimsPrincipal? ValidateToken(string token)
+        {
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_secret));
+            var tokenHandler = new JwtSecurityTokenHandler();
+
+            try
+            {
+                var principal = tokenHandler.ValidateToken(token, new TokenValidationParameters
+                {
+                    ValidateIssuer = false,
+                    ValidateAudience = false,
+                    ValidateLifetime = true,
+                    IssuerSigningKey = key
+                }, out SecurityToken validatedToken);
+
+                return principal;
+            }
+            catch
+            {
+                return null; // Token inválido o expirado
+            }
+        }
+
+        public string? GetUserIdFromToken(string token)
+        {
+            var claims = ValidateToken(token);
+            return claims?.FindFirst("userId")?.Value;
+        }
+
     }
 }

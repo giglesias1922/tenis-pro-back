@@ -5,6 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>tenis_pro_back</RootNamespace>
+    <UserSecretsId>57215509-3e86-4102-8f57-de16110c452c</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
