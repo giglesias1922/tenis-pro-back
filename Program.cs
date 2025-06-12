@@ -59,7 +59,7 @@ builder.Services.AddScoped(typeof(IProfile), typeof(ProfilesRepository));
 builder.Services.AddScoped(typeof(IFunctionality), typeof(FunctionalitiesRepository));
 builder.Services.AddScoped(typeof(IRegistration), typeof(RegistrationRepository));
 builder.Services.AddScoped(typeof(IMatch), typeof(MatchesRepository));
-builder.Services.AddScoped(typeof(IUserActivationToken), typeof(UserActivationTokenRepository));
+builder.Services.AddScoped(typeof(IUserToken), typeof(UserTokenRepository));
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();

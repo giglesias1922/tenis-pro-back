@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
+using MongoDB.Bson;
 using Org.BouncyCastle.Crypto.Generators;
 using Org.BouncyCastle.Pqc.Crypto.Lms;
 using System;
@@ -25,13 +26,14 @@ namespace tenis_pro_back.Controllers
     {
         private readonly IProfile _profileRepository;
         private readonly IUser _userRepository;
+        private readonly IUserToken _userTokenRepository;
         private readonly IConfiguration _config;
         private readonly EmailHelper _emailHelper;
         private readonly EncryptionHelper _encryptionHelper;
         private readonly JwtHelper _jwtHelper;
         private readonly IHttpContextAccessor _httpContextAccessor;
 
-        public AuthController(IProfile profileRepository, IUser userRepository, EmailHelper emailHelper, IHttpContextAccessor httpContextAccessor, JwtHelper jwtHelper, IConfiguration config, EncryptionHelper encryptionHelper)
+        public AuthController(IProfile profileRepository, IUser userRepository, EmailHelper emailHelper, IHttpContextAccessor httpContextAccessor, JwtHelper jwtHelper, IConfiguration config, EncryptionHelper encryptionHelper, IUserToken userTokenRepository)
         {
             _profileRepository = profileRepository;
             _userRepository = userRepository;
@@ -40,6 +42,7 @@ namespace tenis_pro_back.Controllers
             _jwtHelper = jwtHelper;
             _config = config;
             _encryptionHelper = encryptionHelper;
+            _userTokenRepository = userTokenRepository;
         }
 
         [AllowAnonymous]
@@ -262,38 +265,35 @@ namespace tenis_pro_back.Controllers
 
         }
 
-        private async Task SendResetPasswordEmail(string token, string email)
+        private async Task SendResetPasswordEmail(string token, ResetPasswordDto request)
         {
-            var request = _httpContextAccessor.HttpContext?.Request;
+            var redirectUrl = $"{request.RedirectUrl}?token={token}";
 
-            var resetUrl = "";
-
-            if (request != null)
-            {
-                var scheme = request.Scheme;           // http o https
-                var host = request.Host.Value;         // localhost:5000 o dominio
-                resetUrl = $"{scheme}://{host}/api/auth/resetpassword?token={token}";
-            }
-
+            
             // Simula envío de email (puedes usar MailKit, SendGrid, etc.)
-            await _emailHelper.SendAsync(email, "Reseto de contraseña", $"Se ha solicitado un reseto de contraseña. Haz clic aquí para confirmar: {resetUrl}");
+            await _emailHelper.SendAsync(request.Email, "Reseto de contraseña", $"Se ha solicitado un reseto de contraseña. Haz clic aquí para confirmar: {redirectUrl}");
 
 
         }
 
 
         [AllowAnonymous]
-        [HttpGet("ResetPassword")]
-        public async Task<IActionResult> ResetPassword([FromQuery]string token)
+        [HttpPut("ValidateResetPasswordToken")]
+        public async Task<IActionResult> ValidateResetPasswordToken([FromQuery]Guid token)
         {
             try
             {
-                string? userId = _jwtHelper.GetUserIdFromToken(token);
+                var userToken = await _userTokenRepository.GetTokenAsync(token);
 
-                if (userId == null) return Unauthorized();
+                if (userToken == null || userToken.Used)
+                    return BadRequest(new { success = false, message = "Token inválido o ya utilizado." });
+
+                if (userToken.ExpirationDate < DateTime.UtcNow)
+                    return BadRequest(new { success = false, message = "Token expirado." });
+
 
                 //Vuelve a buscar el usuario por si se elimino durante la vigencia del jwt token
-                User? user = await _userRepository.GetById(userId);
+                User? user = await _userRepository.GetById(userToken.UserId);
 
                 if (user == null)
                     return BadRequest("Usuario no encontrado.");
@@ -352,21 +352,31 @@ namespace tenis_pro_back.Controllers
         {
             try
             {
-                Int32 expirationTime = 15; //default
+                int expirationMinutes = 15;
 
-                var JwtExpirationTime = _config["JwtExpirationTime:ResetPassword"];
-
-                if (JwtExpirationTime != null)
-                    expirationTime = Int32.Parse(JwtExpirationTime);
+                var expirationConfig = _config["TokenExpirationMinutes:ResetPassword"];
+                if (!string.IsNullOrEmpty(expirationConfig))
+                    expirationMinutes = int.Parse(expirationConfig);
 
                 Models.User? user = await _userRepository.GetByEmail(request.Email);
 
                 if (user == null)
                     return Ok(new { success = false, message= "Email no registrado." });
 
-                var token = _jwtHelper.GenerateToken(user, expirationTime);
 
-                await SendResetPasswordEmail(token, user.Email);
+                // Crear token
+                UserToken userToken = new UserToken
+                {                    
+                    UserId = user.Id,
+                    Token = Guid.NewGuid(),
+                    ExpirationDate = DateTime.UtcNow.AddMinutes(expirationMinutes),
+                    Used = false
+                };
+
+                // Guardar en MongoDB
+                await _userTokenRepository.CreateAsync(userToken);
+
+                await SendResetPasswordEmail(userToken.Token.ToString(), request);
 
                 return Ok(new { success = true });
             }
