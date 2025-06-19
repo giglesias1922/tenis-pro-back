@@ -22,6 +22,8 @@ namespace tenis_pro_back.Repositories
             _locationsRepository = locationsRepository;
         }
 
+
+
         public async Task<IEnumerable<TournamentDetailDto>> GetTournamentsWithOpenRegistrations()
         {
             var today = DateTime.UtcNow.Date;
@@ -38,7 +40,7 @@ namespace tenis_pro_back.Repositories
             var today = DateTime.UtcNow;
 
             var tournaments = await _tournaments
-                .Find(t => t.CloseDate < today && t.Status!= TournamentStatus.Finalized)
+                .Find(t => t.CloseDate < today && t.Status!= Models.Enums.TournamentStatusEnum.Finalized)
                 .ToListAsync();
 
             return await GenerateDtoList(tournaments);
@@ -66,7 +68,7 @@ namespace tenis_pro_back.Repositories
                     CategoryDescription = categoriesMap.ContainsKey(tournament.CategoryId) ? categoriesMap[tournament.CategoryId] : "N/A",
                     LocationDescription = locationsMap.ContainsKey(tournament.LocationId) ? locationsMap[tournament.LocationId] : "N/A",
                     Status = tournament.Status,
-                    StatusName = tournament.StatusName,
+                    StatusName = tournament.Status.ToString(),
                     CloseDate = tournament.CloseDate.HasValue ? DateTime.SpecifyKind(tournament.CloseDate.Value, DateTimeKind.Utc) : (DateTime?)null,
                     InitialDate = tournament.InitialDate.HasValue ? DateTime.SpecifyKind(tournament.InitialDate.Value, DateTimeKind.Utc) : (DateTime?)null,
                     EndDate = tournament.EndDate.HasValue ? DateTime.SpecifyKind(tournament.EndDate.Value, DateTimeKind.Utc) : (DateTime?)null,
@@ -96,7 +98,7 @@ namespace tenis_pro_back.Repositories
                 CategoryDescription = categoriesMap.ContainsKey(tournament.CategoryId) ? categoriesMap[tournament.CategoryId] : "N/A",
                 LocationDescription = locationsMap.ContainsKey(tournament.LocationId) ? locationsMap[tournament.LocationId] : "N/A",
                 Status = tournament.Status,
-                StatusName = tournament.StatusName,
+                StatusName = tournament.Status.ToString(),
                 CloseDate = tournament.CloseDate.HasValue ? DateTime.SpecifyKind(tournament.CloseDate.Value, DateTimeKind.Utc) : (DateTime?)null,
                 InitialDate = tournament.InitialDate.HasValue ? DateTime.SpecifyKind(tournament.InitialDate.Value, DateTimeKind.Utc) : (DateTime?)null,
                 EndDate = tournament.EndDate.HasValue ? DateTime.SpecifyKind(tournament.EndDate.Value, DateTimeKind.Utc) : (DateTime?)null,
@@ -108,7 +110,7 @@ namespace tenis_pro_back.Repositories
         public async Task<IEnumerable<TournamentDetailDto>> GetTournamentsActives()
         {
             var tournaments = await _tournaments
-                .Find(t => t.Status == TournamentStatus.Pending || t.Status== TournamentStatus.Initiated)
+                .Find(t => t.Status == Models.Enums.TournamentStatusEnum.Pending || t.Status== Models.Enums.TournamentStatusEnum.Initiated)
                 .ToListAsync();
 
             return await GenerateDtoList(tournaments);

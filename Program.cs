@@ -60,6 +60,7 @@ builder.Services.AddScoped(typeof(IFunctionality), typeof(FunctionalitiesReposit
 builder.Services.AddScoped(typeof(IRegistration), typeof(RegistrationRepository));
 builder.Services.AddScoped(typeof(IMatch), typeof(MatchesRepository));
 builder.Services.AddScoped(typeof(IUserToken), typeof(UserTokenRepository));
+builder.Services.AddScoped(typeof(IParameter), typeof(ParameterRepository));
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();

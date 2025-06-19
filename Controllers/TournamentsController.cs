@@ -7,7 +7,6 @@ using tenis_pro_back.Models.Dto;
 
 namespace tenis_pro_back.Controllers
 {
-    [Authorize]
     [Route("api/[controller]")]
 	[ApiController]
 	public class TournamentsController : ControllerBase
@@ -19,6 +18,7 @@ namespace tenis_pro_back.Controllers
 			_tournamentRepository = tournamentRepository;
 		}
 
+        [Authorize]
         [HttpGet("open-registrations")]
         public async Task<ActionResult<IEnumerable<TournamentDetailDto>>> GetTournamentsWithOpenRegistrations()
         {
@@ -35,7 +35,35 @@ namespace tenis_pro_back.Controllers
             }
         }
 
+        [AllowAnonymous]
+        [HttpGet("tournament-types")]
+        public IActionResult GetTournamentTypes()
+        {
+            var enumList = Enum.GetValues(typeof(Models.Enums.TournamentTypeEnum))
+                .Cast<Models.Enums.TournamentTypeEnum>()
+                .Select(e => new {
+                    id = (int)e,
+                    description = e.ToString()
+                });
 
+            return Ok(enumList);
+        }
+
+        [AllowAnonymous]
+        [HttpGet("tournament-status")]
+        public IActionResult GetTournamentStatus()
+        {
+            var enumList = Enum.GetValues(typeof(Models.Enums.TournamentStatusEnum))
+                .Cast<Models.Enums.TournamentStatusEnum>()
+                .Select(e => new {
+                    id = (int)e,
+                    description = e.ToString()
+                });
+
+            return Ok(enumList);
+        }
+
+        [Authorize]
         [HttpGet("to-programming")]
         public async Task<ActionResult<IEnumerable<TournamentDetailDto>>> GetTournamentsToProgramming()
         {
@@ -51,9 +79,10 @@ namespace tenis_pro_back.Controllers
 
             }
         }
-        
+
 
         // GET: api/tournaments
+        [AllowAnonymous]
         [HttpGet]
 		public async Task<ActionResult<IEnumerable<TournamentDetailDto>>> GetAll()
 		{
@@ -72,7 +101,8 @@ namespace tenis_pro_back.Controllers
 
 		// GET: api/tournaments/{id}
 		[HttpGet("{id}")]
-		public async Task<ActionResult<TournamentDetailDto>> GetById(string id)
+        [AllowAnonymous]
+        public async Task<ActionResult<TournamentDetailDto>> GetById(string id)
 		{
 			try
 			{
@@ -95,7 +125,8 @@ namespace tenis_pro_back.Controllers
 
 		// POST: api/tournaments
 		[HttpPost]
-		public async Task<ActionResult> Create(Tournament tournament)
+        [Authorize]
+        public async Task<ActionResult> Create(Tournament tournament)
 		{
 			try
 			{
@@ -113,7 +144,8 @@ namespace tenis_pro_back.Controllers
 
 		// PUT: api/tournaments/{id}
 		[HttpPut("{id}")]
-		public async Task<IActionResult> Update(string id, Tournament tournament)
+        [Authorize]
+        public async Task<IActionResult> Update(string id, Tournament tournament)
 		{
 			try
 			{
@@ -137,7 +169,8 @@ namespace tenis_pro_back.Controllers
 
 		// DELETE: api/tournaments/{id}
 		[HttpDelete("{id}")]
-		public async Task<IActionResult> Delete(string id)
+        [Authorize]
+        public async Task<IActionResult> Delete(string id)
 		{
 			try
 			{

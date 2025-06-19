@@ -46,7 +46,7 @@ namespace tenis_pro_back.Repositories
                 var tournament = tournaments.FirstOrDefault(w => w.Id == match.TournamentId);
 
                 string tournamentDesc = tournament?.Description ?? "N/A";
-                TournamentType tournamentType = tournament?.TournamentType?? throw new ApplicationException("Tournament type not found");
+                Models.Enums.TournamentTypeEnum tournamentType = tournament?.TournamentType?? throw new ApplicationException("Tournament type not found");
                 string tournamentTypeDesc = tournament?.TournamentType.ToString() ?? "Unknown";
 
                 Registration registration1 = await _registrationRepository.GetById(match.registrations[0]);
@@ -82,7 +82,7 @@ namespace tenis_pro_back.Repositories
             var tournament = await _tournamentsRepository.GetById(match.TournamentId);
 
             string tournamentDesc = tournament?.Description ?? "N/A";
-                TournamentType tournamentType = tournament?.TournamentType ?? throw new ApplicationException("Tournament type not found");
+            Models.Enums.TournamentTypeEnum tournamentType = tournament?.TournamentType ?? throw new ApplicationException("Tournament type not found");
                 string tournamentTypeDesc = tournament?.TournamentType.ToString() ?? "Unknown";
 
             Registration registracion1 = await _registrationRepository.GetById(match.registrations[0]);

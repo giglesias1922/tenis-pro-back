@@ -11,7 +11,7 @@ namespace tenis_pro_back.Models.Dto
         public required string PlayerBName { get; set; }
         public MatchStatus Status { get; set; }
 
-        public TournamentType Type { get; set; }
+        public Models.Enums.TournamentTypeEnum Type { get; set; }
         public required string TournamentTypeDescription { get; set; }
         public string? CategoryDescription { get; set; }
         public string? LocationDescription { get; set; }

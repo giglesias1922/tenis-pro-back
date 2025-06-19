@@ -31,32 +31,12 @@ namespace tenis_pro_back.Models
 		public required string CategoryId { get; set; }  // IDs de las categorías
 
         [BsonElement("tournamentype")]
-        public required TournamentType TournamentType{ get; set; }  // single /doble
+        public required Models.Enums.TournamentTypeEnum TournamentType { get; set; }  // single /doble
 
         [BsonElement("status")]
-		public required TournamentStatus Status { get; set; }
+		public required Models.Enums.TournamentStatusEnum Status { get; set; }
 
-        [BsonIgnore]
-        public string StatusName => Status switch
-        {
-            TournamentStatus.Pending => "Pendiente",
-            TournamentStatus.Initiated => "Iniciado",
-            TournamentStatus.Finalized => "Finalizado",
-            _ => "Desconocido"
-        };
-
-	}
-
-	public enum TournamentStatus
-	{
-		Pending = 0,
-		Initiated = 1,
-		Finalized = 2
-	}
-
-    public enum TournamentType
-    {
-        Single = 0,
-        Double = 1
+        [BsonElement("image")]
+        public string? Image { get; set; }
     }
 }

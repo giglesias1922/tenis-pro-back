@@ -259,6 +259,8 @@ namespace tenis_pro_back.Controllers
                 activationUrl = $"{scheme}://{host}/api/auth/activate?token={token}";
             }
 
+
+
             // Simula envío de email (puedes usar MailKit, SendGrid, etc.)
             await _emailHelper.SendAsync(email, "Activa tu cuenta", $"Haz clic aquí para activar tu cuenta: {activationUrl}");
 
@@ -267,11 +269,21 @@ namespace tenis_pro_back.Controllers
 
         private async Task SendResetPasswordEmail(string token, ResetPasswordDto request)
         {
-            var redirectUrl = $"{request.RedirectUrl}?token={token}";
+            var resetPasswordUrl = $"{request.RedirectUrl}?token={token}";
 
-            
+
+            string htmlBody = $@"
+                <p>Hacé clic en el siguiente botón para cambiar tu contraseña:</p>
+                <a href='{resetPasswordUrl}'
+                   style='display:inline-block;padding:12px 20px;background-color:#1976d2;color:white;text-decoration:none;border-radius:5px;font-weight:bold;'>
+                   Cambiar Contraseña
+                </a>
+                <p>Si no solicitaste este cambio, podés ignorar este mensaje.</p>
+            ";
+
+
             // Simula envío de email (puedes usar MailKit, SendGrid, etc.)
-            await _emailHelper.SendAsync(request.Email, "Reseto de contraseña", $"Se ha solicitado un reseto de contraseña. Haz clic aquí para confirmar: {redirectUrl}");
+            await _emailHelper.SendAsync(request.Email, "Reestablecimiento de contraseña", htmlBody);
 
 
         }
@@ -303,10 +315,7 @@ namespace tenis_pro_back.Controllers
 
                 await _userRepository.Put(user.Id!, user);
 
-                var frontendUrl = _config["Frontend:ResetPasswordUrl"];
-                var redirectUrl = $"{frontendUrl}?token={token}";
-
-                return Redirect(redirectUrl);
+                return Ok(new { success = true, userId = user.Id });
             }
             catch (Exception ex)
             {
@@ -317,24 +326,24 @@ namespace tenis_pro_back.Controllers
         }
 
         [AllowAnonymous]
-        [HttpPost("ChangePassword")]
+        [HttpPut("ChangePassword")]
         public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto request)
         {
             try
             {
-                User? user = await _userRepository.GetByEmail(request.Email);
+                User? user = await _userRepository.GetById(request.Id);
 
                 if (user == null)
                     return Ok(new { success = false, message = "Usuario no encontrado." });
 
                 var hasher = new PasswordHasher<object>();
-                var hashedPassword = hasher.HashPassword(null, user.Password);
+                var hashedPassword = hasher.HashPassword(null, request.Password);
 
 
                 user.Password = hashedPassword;
                 user.Status = UserStatus.Enabled;
 
-                await _userRepository.Put(user.Id!, user);
+                await _userRepository.Put(request.Id, user);
 
                 return Ok(new { success=true});
             }

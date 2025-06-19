@@ -7,7 +7,6 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace tenis_pro_back.Controllers
 {
-    [Authorize]
     [Route("api/[controller]")]
 	[ApiController]
 	public class LocationsController : ControllerBase
@@ -25,7 +24,8 @@ namespace tenis_pro_back.Controllers
         // GET: api/location
 
         [HttpGet]
-		public async Task<ActionResult<IEnumerable<Location>>> GetAll()
+        [AllowAnonymous]
+        public async Task<ActionResult<IEnumerable<Location>>> GetAll()
 		{
 			try
 			{
@@ -42,7 +42,8 @@ namespace tenis_pro_back.Controllers
 
 		// GET: api/location/{id}
 		[HttpGet("{id}")]
-		public async Task<ActionResult<Location>> GetById(string id)
+        [AllowAnonymous]
+        public async Task<ActionResult<Location>> GetById(string id)
 		{
 			try
 			{
@@ -63,7 +64,8 @@ namespace tenis_pro_back.Controllers
 
 		// POST: api/location
 		[HttpPost]
-		public async Task<ActionResult<Location>> Create(Location location) 
+        [Authorize]
+        public async Task<ActionResult<Location>> Create(Location location) 
 		{
 			try
 			{
@@ -81,7 +83,8 @@ namespace tenis_pro_back.Controllers
 
 		// PUT: api/location/{id}
 		[HttpPut("{id}")]
-		public async Task<IActionResult> Update(string id, Location location)
+        [Authorize]
+        public async Task<IActionResult> Update(string id, Location location)
 		{
 			try
 			{
@@ -111,7 +114,8 @@ namespace tenis_pro_back.Controllers
 
 		// DELETE: api/location/{id}
 		[HttpDelete("{id}")]
-		public async Task<IActionResult> Delete(string id)
+		[Authorize]
+        public async Task<IActionResult> Delete(string id)
 		{
 			try
 			{

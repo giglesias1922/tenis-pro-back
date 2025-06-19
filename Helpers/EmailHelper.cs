@@ -25,7 +25,7 @@ namespace tenis_pro_back.Helpers
             message.From.Add(new MailboxAddress(MailHeader, MailNoReply));
             message.To.Add(MailboxAddress.Parse(to));
             message.Subject = subject;
-            message.Body = new TextPart("plain") { Text = body };
+            message.Body = new TextPart("html") { Text = body };
 
             using var client = new SmtpClient();
             await client.ConnectAsync(MailSmtp, MailSmtpPort, false);

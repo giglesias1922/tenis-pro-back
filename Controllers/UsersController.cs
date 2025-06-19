@@ -93,9 +93,25 @@ namespace tenis_pro_back.Controllers
         {
             try
             {
+                User? duplicated = await _userRepository.GetByEmail(user.Email);
+
+                if (duplicated != null)
+                {
+                    return Ok(new
+                    {
+                        success = false,
+                        message = "Ya existe un usuario con ese correo."
+                    });
+                }
+
                 user.Id = null; // Deja que MongoDB genere el Id automáticamente
                 await _userRepository.Post(user);
-                return CreatedAtAction(nameof(GetById), new { id = user.Id }, user);
+
+                return Ok(new
+                {
+                    success = true,
+                    data = user
+                });
             }
             catch (Exception ex)
             {
@@ -115,11 +131,31 @@ namespace tenis_pro_back.Controllers
 
                 if (existingUser == null)
                 {
-                    return NotFound();
+                    return Ok(new
+                    {
+                        success = false,
+                        message = "Usuario inexistente."
+                    });
+                }
+
+                User? duplicated = await _userRepository.GetByEmail(user.Email);
+
+                if (duplicated != null && duplicated.Id != id)
+                {
+                    return Ok(new
+                    {
+                        success = false,
+                        message = "Ya existe un usuario con ese correo."
+                    });
                 }
 
                 await _userRepository.Put(id, user);
-                return NoContent();
+
+                return Ok(new
+                {
+                    success = true,
+                    data = user
+                });
             }
             catch (Exception ex)
             {

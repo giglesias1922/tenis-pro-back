@@ -60,6 +60,10 @@ namespace tenis_pro_back.Models
 
             [BsonElement("sets")]
             public required List<SetResult> Sets { get; set; } = new();
+
+            [BsonElement("winner")]
+            [BsonRepresentation(BsonType.ObjectId)]
+            public Int32? Points { get; set; }
         }
 
         public class SetResult
