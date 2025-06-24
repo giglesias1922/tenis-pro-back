@@ -82,7 +82,6 @@ namespace tenis_pro_back.Controllers
 
 
         // GET: api/tournaments
-        [AllowAnonymous]
         [HttpGet]
 		public async Task<ActionResult<IEnumerable<TournamentDetailDto>>> GetAll()
 		{
@@ -192,5 +191,23 @@ namespace tenis_pro_back.Controllers
             }
 
         }
-	}
+
+        [AllowAnonymous]
+        [HttpGet("board")]
+        public async Task<ActionResult<IEnumerable<TournamentBoardDto>>> GetTournamentsBoard()
+        {
+            try
+            {
+                IEnumerable<TournamentBoardDto> tournaments = await _tournamentRepository.GetTournamentsBoard();
+                return Ok(tournaments);
+            }
+            catch (Exception ex)
+            {
+                HandleErrorHelper.LogError(ex);
+                return BadRequest(ex.Message);
+
+            }
+        }
+
+    }
 }

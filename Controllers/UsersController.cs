@@ -149,6 +149,7 @@ namespace tenis_pro_back.Controllers
                     });
                 }
 
+                user.Password = existingUser.Password;
                 await _userRepository.Put(id, user);
 
                 return Ok(new

@@ -103,17 +103,33 @@ namespace tenis_pro_back.Repositories
                 InitialDate = tournament.InitialDate.HasValue ? DateTime.SpecifyKind(tournament.InitialDate.Value, DateTimeKind.Utc) : (DateTime?)null,
                 EndDate = tournament.EndDate.HasValue ? DateTime.SpecifyKind(tournament.EndDate.Value, DateTimeKind.Utc) : (DateTime?)null,
                 TournamentType = tournament.TournamentType,
-                TournamentTypeDescription = tournament.TournamentType.ToString()
+                TournamentTypeDescription = tournament.TournamentType.ToString(),
+                Image = tournament.Image,
             };
         }
 
         public async Task<IEnumerable<TournamentDetailDto>> GetTournamentsActives()
         {
             var tournaments = await _tournaments
-                .Find(t => t.Status == Models.Enums.TournamentStatusEnum.Pending || t.Status== Models.Enums.TournamentStatusEnum.Initiated)
+                .Find(t => t.Status != Models.Enums.TournamentStatusEnum.Pending || t.Status== Models.Enums.TournamentStatusEnum.Initiated)
                 .ToListAsync();
 
             return await GenerateDtoList(tournaments);
+        }
+
+        public async Task<IEnumerable<TournamentBoardDto>> GetTournamentsBoard()
+        {
+            IEnumerable<TournamentBoardDto> tournaments = await _tournaments
+                .Find(t => t.Status != Models.Enums.TournamentStatusEnum.Finalized)
+                .Project(t => new TournamentBoardDto
+                {
+                    Id = t.Id,
+                    Image = t.Image
+                })            
+                .SortBy(s=>s.CloseDate)
+                .ToListAsync();
+
+            return tournaments;
         }
 
 

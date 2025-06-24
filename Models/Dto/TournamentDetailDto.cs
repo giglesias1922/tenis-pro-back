@@ -17,5 +17,6 @@ namespace tenis_pro_back.Models.Dto
         public string? StatusName { get; set; }
         public Models.Enums.TournamentTypeEnum? TournamentType { get; set; }
         public string ? TournamentTypeDescription { get; set; }
+        public string? Image { get; set; }
     }
 }

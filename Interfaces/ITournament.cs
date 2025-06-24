@@ -13,5 +13,6 @@ namespace tenis_pro_back.Interfaces
         Task<IEnumerable<TournamentDetailDto>> GetTournamentsWithOpenRegistrations();
         Task<IEnumerable<TournamentDetailDto>> GetTournamentsToProgramming();
         Task<IEnumerable<TournamentDetailDto>> GetTournamentsActives();
+        Task<IEnumerable<TournamentBoardDto>> GetTournamentsBoard();
     }
 }

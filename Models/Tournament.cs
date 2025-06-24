@@ -38,5 +38,24 @@ namespace tenis_pro_back.Models
 
         [BsonElement("image")]
         public string? Image { get; set; }
+
+        // Para singles
+        [BsonElement("players")]
+        public List<string>? PlayerIds { get; set; }
+
+        // Para dobles
+        [BsonElement("teams")]
+        public List<string>? TeamIds { get; set; }
+
+        [BsonElement("groupSize")]
+        public int GroupSize { get; set; } = 4; // jugadores por zona
+
+        [BsonElement("classifyTop")]
+        public int ClassifyTop { get; set; } = 2; // cuántos clasifican por zona
+
+        [BsonElement("includePlata")]
+        public bool IncludePlata { get; set; } = false;
+
+
     }
 }
