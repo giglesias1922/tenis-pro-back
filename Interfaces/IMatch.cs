@@ -15,5 +15,7 @@ namespace tenis_pro_back.Interfaces
 
         Task Delete(string id);
         Task<List<MatchDto>> GetAll();
+
+        Task CreateMatch(Match match);
     }
 }

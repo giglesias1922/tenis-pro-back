@@ -14,11 +14,13 @@ namespace tenis_pro_back.Controllers
     {
         private readonly IMongoCollection<Tournament> _tournamentsCollection;
         private readonly IMongoCollection<Models.Match> _matchesCollection;
+        private readonly IMongoCollection<PlayerRankingStats> _playerRankingStatsCollection;
 
         public RankingController(IMongoDatabase database)
         {
             _tournamentsCollection = database.GetCollection<Tournament>("Tournaments"); 
             _matchesCollection = database.GetCollection<Match>("Matches");
+            _playerRankingStatsCollection = database.GetCollection<PlayerRankingStats>("PlayerRankingStats");
         }
 
         
@@ -46,11 +48,11 @@ namespace tenis_pro_back.Controllers
 
             foreach (var match in matches)
             {
-                if (match.Result == null || match.registrations == null || match.registrations.Count != 2)
+                if (match.Result == null || match.Participant1Id == null || match.Participant2Id == null)
                     continue;
 
                 var winnerId = match.Result.Winner;
-                var loserId = match.registrations.First(r => r != winnerId);
+                var loserId = match.Participant1Id == winnerId ? match.Participant2Id : match.Participant1Id;
                 var points = match.Result.Points ?? 0;
 
                 // Winner
@@ -74,6 +76,26 @@ namespace tenis_pro_back.Controllers
                 .ToList();
 
             return Ok(ranking);
+        }
+
+        [HttpPost("init")]
+        public async Task<IActionResult> InitRanking([FromBody] List<PlayerRankingStats> initialRankings)
+        {
+            if (initialRankings == null || !initialRankings.Any())
+                return BadRequest("No ranking data provided.");
+
+            await _playerRankingStatsCollection.InsertManyAsync(initialRankings);
+            return Ok(new { message = "Initial rankings loaded successfully." });
+        }
+
+        [HttpPost("add")]
+        public async Task<IActionResult> AddRanking([FromBody] PlayerRankingStats ranking)
+        {
+            if (ranking == null || string.IsNullOrEmpty(ranking.PlayerId))
+                return BadRequest("Invalid ranking data.");
+
+            await _playerRankingStatsCollection.InsertOneAsync(ranking);
+            return Ok(new { message = "Ranking entry added successfully." });
         }
     }
 }

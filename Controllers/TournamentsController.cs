@@ -12,11 +12,13 @@ namespace tenis_pro_back.Controllers
 	public class TournamentsController : ControllerBase
 	{
 		private readonly ITournament _tournamentRepository;
+        private readonly ITournamentGeneratorService _tournamentGeneratorService;
 
-		public TournamentsController(ITournament tournamentRepository)
+        public TournamentsController(ITournament tournamentRepository, ITournamentGeneratorService tournamentGeneratorService)
 		{
 			_tournamentRepository = tournamentRepository;
-		}
+            _tournamentGeneratorService = tournamentGeneratorService;
+        }
 
         [Authorize]
         [HttpGet("open-registrations")]
@@ -105,7 +107,7 @@ namespace tenis_pro_back.Controllers
 		{
 			try
 			{
-				var tournament = await _tournamentRepository.GetById(id);
+				var tournament = await _tournamentRepository.GetDtoById(id);
 
 				if (tournament == null)
 				{
@@ -148,7 +150,7 @@ namespace tenis_pro_back.Controllers
 		{
 			try
 			{
-				var existingTournament = await _tournamentRepository.GetById(id);
+				var existingTournament = await _tournamentRepository.GetDtoById(id);
 
 				if (existingTournament == null)
 				{
@@ -173,7 +175,7 @@ namespace tenis_pro_back.Controllers
 		{
 			try
 			{
-				var tournament = await _tournamentRepository.GetById(id);
+				var tournament = await _tournamentRepository.GetDtoById(id);
 
 				if (tournament == null)
 				{
@@ -206,6 +208,60 @@ namespace tenis_pro_back.Controllers
                 HandleErrorHelper.LogError(ex);
                 return BadRequest(ex.Message);
 
+            }
+        }
+
+        [Authorize]
+        [HttpPost("{id}/close-registrations")]
+        public async Task<IActionResult> CloseRegistrations(string id)
+        {
+            try
+            {
+                var tournament = await _tournamentRepository.GetById(id);
+                if (tournament == null)
+                {
+                    return NotFound("Torneo no encontrado");
+                }
+
+                // Verificar que el torneo esté en estado Pending
+                if (tournament.Status != Models.Enums.TournamentStatusEnum.Pending)
+                {
+                    return BadRequest("Solo se pueden cerrar inscripciones de torneos en estado Pending");
+                }
+
+                // Verificar que tenga participantes
+                if (!tournament.Participants.Any())
+                {
+                    return BadRequest("No se puede cerrar inscripciones de un torneo sin participantes");
+                }
+
+                // Cambiar el estado a Programming
+                tournament.Status = Models.Enums.TournamentStatusEnum.Programming;
+                
+                await _tournamentRepository.Put(id, tournament);
+                
+                return Ok(new { message = "Inscripciones cerradas exitosamente" });
+            }
+            catch (Exception ex)
+            {
+                HandleErrorHelper.LogError(ex);
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [Authorize]
+        [HttpPost("{id}/generate-draw")]
+        public async Task<IActionResult> GenerateDraw(string id)
+        {
+            try
+            {
+                var tournament = await _tournamentGeneratorService.GenerateDraw(id);
+                return Ok(tournament);
+            }
+            catch (Exception ex)
+            {
+                HandleErrorHelper.LogError(ex);
+                return BadRequest(new { message = ex.Message });
             }
         }
 

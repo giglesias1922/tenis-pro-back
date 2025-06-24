@@ -57,10 +57,12 @@ builder.Services.AddScoped(typeof(ITournament), typeof(TournamentsRepository));
 builder.Services.AddScoped(typeof(IUser), typeof(UsersRepository));
 builder.Services.AddScoped(typeof(IProfile), typeof(ProfilesRepository));
 builder.Services.AddScoped(typeof(IFunctionality), typeof(FunctionalitiesRepository));
-builder.Services.AddScoped(typeof(IRegistration), typeof(RegistrationRepository));
 builder.Services.AddScoped(typeof(IMatch), typeof(MatchesRepository));
 builder.Services.AddScoped(typeof(IUserToken), typeof(UserTokenRepository));
 builder.Services.AddScoped(typeof(IParameter), typeof(ParameterRepository));
+
+// Services
+builder.Services.AddScoped(typeof(ITournamentGeneratorService), typeof(tenis_pro_back.Services.TournamentGeneratorService));
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();

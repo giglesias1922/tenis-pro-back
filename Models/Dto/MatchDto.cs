@@ -15,8 +15,8 @@ namespace tenis_pro_back.Models.Dto
         public required string TournamentTypeDescription { get; set; }
         public string? CategoryDescription { get; set; }
         public string? LocationDescription { get; set; }
-        public string? RegistrationAId { get; set; }
-        public string? RegistrationBId { get; set; }
+        public string? Participant1Id { get; set; }
+        public string? Participant2Id { get; set; }
         public string? StatusDescription { get; set; }
         
         

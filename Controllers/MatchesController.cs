@@ -50,7 +50,8 @@ namespace tenis_pro_back.Controllers
                 var match = new Match
                 {
                     TournamentId = dto.TournamentId,
-                    registrations = dto.Registrations,
+                    Participant1Id = dto.Participant1Id,
+                    Participant2Id = dto.Participant2Id,
                     Status = Match.MatchStatus.Scheduled,
                     CreatedAt = DateTime.UtcNow,
                     History = new List<Match.MatchHistory>

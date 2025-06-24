@@ -10,16 +10,14 @@ namespace tenis_pro_back.Repositories
     public class MatchesRepository:IMatch
     {
         private readonly IMongoCollection<Match> _matchesCollection;
-        private readonly IRegistration _registrationRepository;
         private readonly ITournament _tournamentsRepository;
         private readonly IUser _usersRepository;
 
-        public MatchesRepository(IMongoDatabase database, ITournament tournamentsRepository, IUser usersRepository, IRegistration registrationRepository)
+        public MatchesRepository(IMongoDatabase database, ITournament tournamentsRepository, IUser usersRepository)
         {
             _matchesCollection = database.GetCollection<Match>("Matches");
             _tournamentsRepository = tournamentsRepository;
             _usersRepository = usersRepository;
-            _registrationRepository = registrationRepository;
         }
         public async Task Post(Match match)
         {
@@ -37,23 +35,23 @@ namespace tenis_pro_back.Repositories
         {
             List<Match> matches = await _matchesCollection.Find(t => true).ToListAsync();
 
-            var tournaments = await _tournamentsRepository.GetAll();
-
             List<MatchDto> matchesDto = new List<MatchDto>();
 
             foreach(Match match in matches)
             {
-                var tournament = tournaments.FirstOrDefault(w => w.Id == match.TournamentId);
+                var tournament = await _tournamentsRepository.GetById(match.TournamentId);
 
                 string tournamentDesc = tournament?.Description ?? "N/A";
                 Models.Enums.TournamentTypeEnum tournamentType = tournament?.TournamentType?? throw new ApplicationException("Tournament type not found");
                 string tournamentTypeDesc = tournament?.TournamentType.ToString() ?? "Unknown";
+                
+                var participant1 = tournament?.Participants.FirstOrDefault(p => p.Id == match.Participant1Id);
+                var participant2 = tournament?.Participants.FirstOrDefault(p => p.Id == match.Participant2Id);
 
-                Registration registration1 = await _registrationRepository.GetById(match.registrations[0]);
-                Registration registration2 = await _registrationRepository.GetById(match.registrations[1]);
-
-                string playerAName = registration1?.DisplayName ?? "Desconocido";
-                string playerBName = registration2?.DisplayName ?? "Desconocido";
+                string playerAName = participant1?.DisplayName ?? "N/A";
+                string playerBName = participant2?.DisplayName ?? "N/A";
+                
+                var tournamentDto = await _tournamentsRepository.GetDtoById(match.TournamentId);
 
                 matchesDto.Add(new MatchDto()
                 {
@@ -65,8 +63,8 @@ namespace tenis_pro_back.Repositories
                     PlayerBName = playerBName,
                     Status = match.Status,
                     StatusDescription = match.Status.ToString(),
-                    LocationDescription = tournament.LocationDescription,
-                    CategoryDescription = tournament.CategoryDescription
+                    LocationDescription = tournamentDto.LocationDescription,
+                    CategoryDescription = tournamentDto.CategoryDescription
                 });
             }
 
@@ -77,17 +75,21 @@ namespace tenis_pro_back.Repositories
         {
             var match = await _matchesCollection.Find(m => m.Id == id).FirstOrDefaultAsync();
 
-            
+            if (match == null) return null;
 
             var tournament = await _tournamentsRepository.GetById(match.TournamentId);
+            
+            if (tournament == null) throw new ApplicationException("Tournament not found for this match");
+            
+            string tournamentDesc = tournament.Description;
+            Models.Enums.TournamentTypeEnum tournamentType = tournament.TournamentType;
+            string tournamentTypeDesc = tournament.TournamentType.ToString();
 
-            string tournamentDesc = tournament?.Description ?? "N/A";
-            Models.Enums.TournamentTypeEnum tournamentType = tournament?.TournamentType ?? throw new ApplicationException("Tournament type not found");
-                string tournamentTypeDesc = tournament?.TournamentType.ToString() ?? "Unknown";
+            var participant1 = tournament.Participants.FirstOrDefault(p => p.Id == match.Participant1Id);
+            var participant2 = tournament.Participants.FirstOrDefault(p => p.Id == match.Participant2Id);
 
-            Registration registracion1 = await _registrationRepository.GetById(match.registrations[0]);
-            Registration registracion2 = await _registrationRepository.GetById(match.registrations[1]);
-
+            var tournamentDto = await _tournamentsRepository.GetDtoById(match.TournamentId);
+            if (tournamentDto == null) throw new ApplicationException("Tournament DTO not found");
 
             return new MatchDto()
             {
@@ -95,13 +97,13 @@ namespace tenis_pro_back.Repositories
                 TournamentDescription = tournamentDesc,
                 Type = tournamentType,
                 TournamentTypeDescription = tournamentTypeDesc,
-                PlayerAName = registracion1.DisplayName,
-                PlayerBName = registracion2.DisplayName,
-                RegistrationAId = registracion1.Id,
-                RegistrationBId = registracion2.Id,
+                PlayerAName = participant1?.DisplayName ?? "N/A",
+                PlayerBName = participant2?.DisplayName ?? "N/A",
+                Participant1Id = participant1?.Id,
+                Participant2Id = participant2?.Id,
                 Status = match.Status,
-                LocationDescription = tournament.LocationDescription,
-                CategoryDescription = tournament.CategoryDescription
+                LocationDescription = tournamentDto.LocationDescription,
+                CategoryDescription = tournamentDto.CategoryDescription
             };
         }
 
@@ -158,5 +160,9 @@ namespace tenis_pro_back.Repositories
             await _matchesCollection.DeleteOneAsync(c => c.Id == id);
         }
 
+        public async Task CreateMatch(Match match)
+        {
+            await _matchesCollection.InsertOneAsync(match);
+        }
     }
 }

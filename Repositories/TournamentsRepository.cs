@@ -26,10 +26,15 @@ namespace tenis_pro_back.Repositories
 
         public async Task<IEnumerable<TournamentDetailDto>> GetTournamentsWithOpenRegistrations()
         {
-            var today = DateTime.UtcNow.Date;
+            //var today = DateTime.UtcNow.Date;
 
+            //var openTournaments = await _tournaments
+            //    .Find(t => t.CloseDate >= today && t.Status == Models.Enums.TournamentStatusEnum.Pending)
+            //    .ToListAsync();
+
+            
             var openTournaments = await _tournaments
-                .Find(t => t.CloseDate >= today)
+                .Find(t => t.Status == Models.Enums.TournamentStatusEnum.Pending)
                 .ToListAsync();
 
             return await GenerateDtoList(openTournaments);
@@ -40,7 +45,7 @@ namespace tenis_pro_back.Repositories
             var today = DateTime.UtcNow;
 
             var tournaments = await _tournaments
-                .Find(t => t.CloseDate < today && t.Status!= Models.Enums.TournamentStatusEnum.Finalized)
+                .Find(t => t.CloseDate < today && t.Status== Models.Enums.TournamentStatusEnum.Finalized)
                 .ToListAsync();
 
             return await GenerateDtoList(tournaments);
@@ -73,7 +78,15 @@ namespace tenis_pro_back.Repositories
                     InitialDate = tournament.InitialDate.HasValue ? DateTime.SpecifyKind(tournament.InitialDate.Value, DateTimeKind.Utc) : (DateTime?)null,
                     EndDate = tournament.EndDate.HasValue ? DateTime.SpecifyKind(tournament.EndDate.Value, DateTimeKind.Utc) : (DateTime?)null,
                     TournamentType = tournament.TournamentType,
-                    TournamentTypeDescription = tournament.TournamentType.ToString()
+                    TournamentTypeDescription = tournament.TournamentType.ToString(),
+                    Image = tournament.Image,
+                    Participants = tournament.Participants,
+                    PlayersPerZone = tournament.PlayersPerZone,
+                    QualifiersPerZone = tournament.QualifiersPerZone,
+                    IncludePlata = tournament.IncludePlata,
+                    Zones = tournament.Zones,
+                    MainBracket = tournament.MainBracket,
+                    SilverCupBracket = tournament.SilverCupBracket
                 });
             }
 
@@ -105,6 +118,13 @@ namespace tenis_pro_back.Repositories
                 TournamentType = tournament.TournamentType,
                 TournamentTypeDescription = tournament.TournamentType.ToString(),
                 Image = tournament.Image,
+                Participants = tournament.Participants,
+                PlayersPerZone = tournament.PlayersPerZone,
+                QualifiersPerZone = tournament.QualifiersPerZone,
+                IncludePlata = tournament.IncludePlata,
+                Zones = tournament.Zones,
+                MainBracket = tournament.MainBracket,
+                SilverCupBracket = tournament.SilverCupBracket
             };
         }
 
@@ -142,7 +162,7 @@ namespace tenis_pro_back.Repositories
 
 
 
-        public async Task<TournamentDetailDto?> GetById(string id)
+        public async Task<TournamentDetailDto?> GetDtoById(string id)
 		{
             var tournament = await _tournaments.Find(t => t.Id == id).FirstOrDefaultAsync();
 
@@ -165,5 +185,11 @@ namespace tenis_pro_back.Repositories
 		{
 			await _tournaments.DeleteOneAsync(t => t.Id == id);
 		}
-	}
+
+        public async Task<Tournament?> GetById(string id)
+        {
+            return  await _tournaments.Find(t => t.Id == id).FirstOrDefaultAsync();
+        }
+
+    }
 }

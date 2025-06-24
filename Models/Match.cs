@@ -13,8 +13,18 @@ namespace tenis_pro_back.Models
         [BsonRepresentation(BsonType.ObjectId)]
         public required string TournamentId { get; set; }
 
-        [BsonElement("registrations")]
-        public required List<string> registrations { get; set; } 
+        [BsonElement("participant1_id")]
+        public string? Participant1Id { get; set; }
+
+        [BsonElement("participant2_id")]
+        public string? Participant2Id { get; set; }
+
+        [BsonElement("zone_id")]
+        [BsonRepresentation(BsonType.ObjectId)]
+        public string? ZoneId { get; set; } // For group stage matches
+
+        [BsonElement("round_name")]
+        public string? RoundName { get; set; } // "Zone A", "Quarter-finals", etc.
 
         [BsonElement("status")]
         public MatchStatus Status { get; set; } = MatchStatus.Scheduled;

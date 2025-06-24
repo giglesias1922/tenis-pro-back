@@ -6,7 +6,7 @@ namespace tenis_pro_back.Interfaces
     public interface ITournament
     {
         Task<IEnumerable<TournamentDetailDto>> GetAll();
-        Task<TournamentDetailDto?> GetById(string id);
+        Task<TournamentDetailDto?> GetDtoById(string id);
         Task Post(Tournament tournament);
         Task Put(string id, Tournament tournament);
         Task Delete(string id);
@@ -14,5 +14,6 @@ namespace tenis_pro_back.Interfaces
         Task<IEnumerable<TournamentDetailDto>> GetTournamentsToProgramming();
         Task<IEnumerable<TournamentDetailDto>> GetTournamentsActives();
         Task<IEnumerable<TournamentBoardDto>> GetTournamentsBoard();
+        Task<Tournament?> GetById(string id);
     }
 }

@@ -8,8 +8,6 @@ namespace tenis_pro_back.Models.Dto
     {
         public required string TournamentId { get; set; }
 
-        public required List<string> Registrations { get; set; }
-
         public MatchStatus Status { get; set; } 
 
         public List<MatchHistory> History { get; set; } = new();
@@ -18,5 +16,7 @@ namespace tenis_pro_back.Models.Dto
 
         public DateTime ScheduledDate { get; set; }
 
+        public string? Participant1Id { get; set; }
+        public string? Participant2Id { get; set; }
     }
 }

@@ -1,5 +1,4 @@
-﻿
-using AutoMapper;
+﻿using AutoMapper;
 
 namespace tenis_pro_back.Models.Dto
 {
@@ -7,7 +6,6 @@ namespace tenis_pro_back.Models.Dto
     {
         public MappingProfile()
         {
-            CreateMap<Registration, RegistrationUserDto>();
             CreateMap<Match.MatchResult, MatchResultDto>();
         }
     }
