@@ -122,9 +122,13 @@ namespace tenis_pro_back.Controllers
                 }
 
                 // Verificar que el torneo esté abierto para inscripciones
-                if (tournament.Status != Models.Enums.TournamentStatusEnum.Pending)
+                if (tournament.Status != Models.Enums.TournamentStatusEnum.Pending || tournament.CloseDate>DateTime.UtcNow)
                 {
-                    return BadRequest("El torneo no está abierto para inscripciones");
+                    return Ok(new
+                    {
+                        success = false,
+                        message = "El torneo no está abierto para inscripciones,"
+                    });
                 }
 
                 // Verificar que los jugadores no estén ya registrados
@@ -136,7 +140,11 @@ namespace tenis_pro_back.Controllers
                 var duplicatePlayers = registrationDto.Players.Where(p => registeredPlayerIds.Contains(p)).ToList();
                 if (duplicatePlayers.Any())
                 {
-                    return BadRequest("Uno o más jugadores ya están registrados en este torneo");
+                    return Ok(new
+                    {
+                        success = false,
+                        message = "Ya esta registrado en este torneo."
+                    });
                 }
 
                 // Crear el participante
@@ -150,7 +158,10 @@ namespace tenis_pro_back.Controllers
                 tournament.Participants.Add(participant);
                 await _tournamentRepository.Put(tournament.Id, tournament);
 
-                return CreatedAtAction(nameof(GetRegistrations), new { tournamentId = tournament.Id }, participant);
+                return Ok(new
+                {
+                    success = true
+                });
             }
             catch (Exception ex)
             {

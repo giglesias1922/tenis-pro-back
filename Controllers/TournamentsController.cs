@@ -251,12 +251,38 @@ namespace tenis_pro_back.Controllers
 
         [Authorize]
         [HttpPost("{id}/generate-draw")]
-        public async Task<IActionResult> GenerateDraw(string id)
+        public async Task<IActionResult> GenerateDraw(string id, [FromBody] DrawConfigurationDto config)
         {
             try
             {
-                var tournament = await _tournamentGeneratorService.GenerateDraw(id);
-                return Ok(tournament);
+                // Obtener el torneo
+                var tournament = await _tournamentRepository.GetById(id);
+                if (tournament == null)
+                {
+                    return NotFound("Torneo no encontrado");
+                }
+
+                // Verificar que el torneo esté en estado Programming
+                if (tournament.Status != Models.Enums.TournamentStatusEnum.Programming)
+                {
+                    return BadRequest("Solo se puede generar el draw de torneos en estado Programming");
+                }
+
+                // Verificar que tenga participantes
+                if (!tournament.Participants.Any())
+                {
+                    return BadRequest("No se puede generar el draw de un torneo sin participantes");
+                }
+
+                // Actualizar la configuración del torneo
+                tournament.IncludePlata = config.IncludePlata;
+                tournament.PlayersPerZone = config.PlayersPerZone;
+                tournament.QualifiersPerZone = config.QualifiersPerZone;
+
+                // Generar el draw
+                var result = await _tournamentGeneratorService.GenerateDraw(id, config);
+                
+                return Ok(new { message = "Draw generado exitosamente", tournament = result });
             }
             catch (Exception ex)
             {

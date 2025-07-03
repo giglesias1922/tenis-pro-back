@@ -2,6 +2,7 @@ using MongoDB.Bson;
 using System.Linq;
 using tenis_pro_back.Interfaces;
 using tenis_pro_back.Models;
+using tenis_pro_back.Models.Dto;
 
 namespace tenis_pro_back.Services
 {
@@ -16,7 +17,7 @@ namespace tenis_pro_back.Services
             _matchRepository = matchRepository;
         }
 
-        public async Task<Tournament> GenerateDraw(string tournamentId)
+        public async Task<Tournament> GenerateDraw(string tournamentId, DrawConfigurationDto config)
         {
             var tournament = await _tournamentRepository.GetById(tournamentId);
             if (tournament == null)
@@ -33,8 +34,13 @@ namespace tenis_pro_back.Services
                 throw new Exception("Not enough participants to generate the draw.");
             }
 
-            // 1. Calculate number of zones
-            var numZones = (int)Math.Ceiling((double)participants.Count / tournament.PlayersPerZone);
+            // Actualizar la configuración del torneo
+            tournament.IncludePlata = config.IncludePlata;
+            tournament.PlayersPerZone = config.PlayersPerZone;
+            tournament.QualifiersPerZone = config.QualifiersPerZone;
+
+            // Calcular automáticamente el número de zonas
+            var numZones = (int)Math.Ceiling((double)participants.Count / config.PlayersPerZone);
 
             // 2. Identify seeds
             var seeds = participants.Take(numZones).ToList();
@@ -59,7 +65,7 @@ namespace tenis_pro_back.Services
             int currentZoneIndex = 0;
             foreach (var player in rest)
             {
-                while (tournament.Zones[currentZoneIndex].ParticipantIds.Count >= tournament.PlayersPerZone)
+                while (tournament.Zones[currentZoneIndex].ParticipantIds.Count >= config.PlayersPerZone)
                 {
                     currentZoneIndex = (currentZoneIndex + 1) % numZones;
                 }
