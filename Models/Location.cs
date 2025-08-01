@@ -24,8 +24,8 @@ namespace tenis_pro_back.Models
 		public string? Comments { get; set; }
 
 
-		[BsonElement("enabled")]
-		public bool Enabled { get; set; } = true;
+        [BsonElement("active")]
+        public bool Active { get; set; } = true;
 
     }
 }

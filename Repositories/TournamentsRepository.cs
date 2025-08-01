@@ -1,11 +1,14 @@
 ﻿// TournamentRepository.cs
-using tenis_pro_back.Models;
-using MongoDB.Driver;
-using tenis_pro_back.Interfaces;
 using Microsoft.AspNetCore.Http.HttpResults;
-using tenis_pro_back.Models.Dto;
 using Microsoft.AspNetCore.Mvc;
+using MongoDB.Bson;
+using MongoDB.Bson.Serialization.Attributes;
+using MongoDB.Driver;
 using System.Text.RegularExpressions;
+using tenis_pro_back.Interfaces;
+using tenis_pro_back.Models;
+using tenis_pro_back.Models.Dto;
+using tenis_pro_back.Models.Enums;
 
 namespace tenis_pro_back.Repositories
 {
@@ -14,15 +17,34 @@ namespace tenis_pro_back.Repositories
         private readonly IMongoCollection<Tournament> _tournaments;
         private readonly ICategory  _categoriesRepository;
         private readonly ILocation _locationsRepository;
+        private readonly IUser _usersRepository;
 
-        public TournamentsRepository(IMongoDatabase database, ICategory categoriesRepository, ILocation locationsRepository)
+        public TournamentsRepository(IMongoDatabase database, ICategory categoriesRepository, ILocation locationsRepository, IUser usersRepository)
         {
             _tournaments = database.GetCollection<Tournament>("Tournaments");
             _categoriesRepository = categoriesRepository;
             _locationsRepository = locationsRepository;
+            _usersRepository = usersRepository;
         }
 
+        public async Task ResetTournamentDraw(string tournamentId)
+        {
+            var tournament = await GetById(tournamentId); // O agregar await si es async
 
+            if (tournament == null)
+                throw new ApplicationException("Tournament ID is required.");
+
+            // Crear el filtro por ID
+            var filter = Builders<Tournament>.Filter.Eq(t => t.Id, tournamentId);
+
+            // Crear el update combinado
+            var update = Builders<Tournament>.Update.Combine(
+                Builders<Tournament>.Update.Set(t => t.Status, TournamentStatusEnum.Programming),
+                Builders<Tournament>.Update.Set(t => t.Zones, new List<Zone>()) // suponiendo que Zones es una lista de Zone
+            );
+
+            var result = await _tournaments.UpdateOneAsync(filter, update);
+        }
 
         public async Task<IEnumerable<TournamentDetailDto>> GetTournamentsWithOpenRegistrations()
         {
@@ -45,7 +67,7 @@ namespace tenis_pro_back.Repositories
             var today = DateTime.UtcNow;
 
             var tournaments = await _tournaments
-                .Find(t => t.CloseDate < today && t.Status== Models.Enums.TournamentStatusEnum.Finalized)
+                .Find(t => t.CloseDate < today && t.Status== Models.Enums.TournamentStatusEnum.Completed)
                 .ToListAsync();
 
             return await GenerateDtoList(tournaments);
@@ -140,7 +162,7 @@ namespace tenis_pro_back.Repositories
         public async Task<IEnumerable<TournamentBoardDto>> GetTournamentsBoard()
         {
             IEnumerable<TournamentBoardDto> tournaments = await _tournaments
-                .Find(t => t.Status != Models.Enums.TournamentStatusEnum.Finalized)
+                .Find(t => t.Status != Models.Enums.TournamentStatusEnum.Completed)
                 .Project(t => new TournamentBoardDto
                 {
                     Id = t.Id,
@@ -176,12 +198,95 @@ namespace tenis_pro_back.Repositories
 			await _tournaments.InsertOneAsync(tournament);
 		}
 
-		public async Task Put(string id, Tournament tournament)
-		{
-			await _tournaments.ReplaceOneAsync(t => t.Id == id, tournament);
-		}
+        public async Task UpdateDraw(TournamentUpdateDrawDto tournament, IClientSessionHandle session)
+        {
+            var filter = Builders<Tournament>.Filter.Eq(t => t.Id, tournament.Id);
 
-		public async Task Delete(string id)
+            var update = Builders<Tournament>.Update
+                .Set(t => t.Status, tournament.Status)
+                .Set(t => t.PlayersPerZone, tournament.PlayersPerZone)
+                .Set(t => t.QualifiersPerZone, tournament.QualifiersPerZone)
+                .Set(t => t.IncludePlata, tournament.IncludePlata)
+                .Set(t => t.Zones, tournament.Zones);
+
+            var result = await _tournaments.UpdateOneAsync(session,filter, update);
+
+            if (result.MatchedCount == 0)
+            {
+                throw new Exception("Tournament not found.");
+            }
+        }
+
+        public async Task UpdateMainBraket(TournamentUpdateBracketDto tournament, IClientSessionHandle session)
+        {
+            var filter = Builders<Tournament>.Filter.Eq(t => t.Id, tournament.Id);
+
+            var update = Builders<Tournament>.Update
+                .Set(t => t.Status, tournament.Status)
+                .Set(t => t.MainBracket, tournament.DrawBracket);
+
+            var result = await _tournaments.UpdateOneAsync(session, filter, update);
+
+            if (result.MatchedCount == 0)
+            {
+                throw new Exception("Tournament not found.");
+            }
+        }
+
+        public async Task UpdateSilverCupBraket(TournamentUpdateBracketDto dto, IClientSessionHandle session)
+        {
+            var filter = Builders<Tournament>.Filter.Eq(t => t.Id, dto.Id);
+
+            var update = Builders<Tournament>.Update
+                .Set(t => t.Status, dto.Status)
+                .Set(t => t.SilverCupBracket, dto.DrawBracket);
+
+            var result = await _tournaments.UpdateOneAsync(session, filter, update);
+
+            if (result.MatchedCount == 0)
+            {
+                throw new Exception("Tournament not found.");
+            }
+        }
+        public async Task UpdateTournament(string id, TournamentUpdateDto dto)
+		{
+            var update = Builders<Tournament>.Update;
+
+            var updates = new List<UpdateDefinition<Tournament>>();
+
+            if (dto.Description != null)
+                updates.Add(update.Set(t => t.Description, dto.Description));
+
+            if (dto.CloseDate != null)
+                updates.Add(update.Set(t => t.CloseDate, dto.CloseDate));
+
+            if (dto.InitialDate != null)
+                updates.Add(update.Set(t => t.InitialDate, dto.InitialDate));
+
+            if (dto.EndDate != null)
+                updates.Add(update.Set(t => t.EndDate, dto.EndDate));
+
+            if (dto.LocationId != null)
+                updates.Add(update.Set(t => t.LocationId, dto.LocationId));
+
+            if (dto.CategoryId != null)
+                updates.Add(update.Set(t => t.CategoryId, dto.CategoryId));
+
+            if (dto.TournamentType != null)
+                updates.Add(update.Set(t => t.TournamentType, dto.TournamentType));
+
+            if (dto.Image != null)
+                updates.Add(update.Set(t => t.Image, dto.Image));
+
+            if (updates.Count == 0)
+                return; // Nada para actualizar
+
+            var combined = update.Combine(updates);
+
+            await _tournaments.UpdateOneAsync(t => t.Id == id, combined);
+        }
+
+        public async Task Delete(string id)
 		{
 			await _tournaments.DeleteOneAsync(t => t.Id == id);
 		}
@@ -191,5 +296,73 @@ namespace tenis_pro_back.Repositories
             return  await _tournaments.Find(t => t.Id == id).FirstOrDefaultAsync();
         }
 
+        public async Task AddParticipant(string id, Participant participant)
+        {
+            var filter = Builders<Tournament>.Filter.Eq(t => t.Id, id);
+            var update = Builders<Tournament>.Update.Push(t => t.Participants, participant);
+
+            await _tournaments.UpdateOneAsync(filter, update);
+        }
+
+        public async Task<List<User>> GetParticipantsToRegister(string categoryId, string tournamentId)
+        {
+            var tournament = await _tournaments.Find(t => t.Id == tournamentId).FirstOrDefaultAsync();
+            if (tournament == null)
+                throw new KeyNotFoundException("Torneo no encontrado");
+
+            var allUsers = await _usersRepository.GetByCategory(categoryId);
+
+            var registeredPlayerIds = tournament.Participants
+                .SelectMany(p => p.PlayerIds)
+                .Distinct()
+                .ToHashSet();
+
+            var availableUsers = allUsers
+                .Where(u => !registeredPlayerIds.Contains(u.Id))
+                .ToList();
+
+            return availableUsers;
+        }
+
+
+        public async Task<bool> RemoveParticipant(string tournamentId, string participantId)
+        {
+            var update = Builders<Tournament>.Update.PullFilter(t => t.Participants, p => p.Id == participantId);
+
+            var result = await _tournaments.UpdateOneAsync(
+                t => t.Id == tournamentId,
+                update
+            );
+
+            return result.ModifiedCount > 0;
+        }
+
+        public async Task<List<Participant>> GetParticipants(string tournamentId)
+        {
+            var tournament = await _tournaments.Find(t => t.Id == tournamentId).FirstOrDefaultAsync();
+            return tournament?.Participants;
+        }
+
+        public async Task<Participant> GetParticipant(string tournamentId, string participantId)
+        {
+            var tournament = await _tournaments.Find(t => t.Id == tournamentId).FirstOrDefaultAsync();
+            return tournament?.Participants.FirstOrDefault(p => p.Id == participantId);
+        }
+
+        public async Task UpdateStatus(string tournamentId, TournamentStatusEnum newStatus)
+        {
+            var filter = Builders<Tournament>.Filter.Eq(t => t.Id, tournamentId);
+            var update = Builders<Tournament>.Update.Set(t => t.Status, newStatus);
+            await _tournaments.UpdateOneAsync(filter, update);
+        }
+
+        public async Task UpdateStatus(string tournamentId, TournamentStatusEnum newStatus, IClientSessionHandle session)
+        {
+            var filter = Builders<Tournament>.Filter.Eq(t => t.Id, tournamentId);
+            var update = Builders<Tournament>.Update.Set(t => t.Status, newStatus);
+            await _tournaments.UpdateOneAsync(session, filter, update);
+        }
+
+        
     }
 }

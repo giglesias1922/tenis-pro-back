@@ -5,6 +5,8 @@ VisualStudioVersion = 17.11.35222.181
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "tenis-pro-back", "tenis-pro-back.csproj", "{A6C001FF-AA77-4F60-9D64-0EF6F0870135}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "tenis-pro-back-test", "..\tenis-pro-back-test\tenis-pro-back-test.csproj", "{1C734165-14F2-4071-9BEF-CF3AB8EFED42}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{A6C001FF-AA77-4F60-9D64-0EF6F0870135}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A6C001FF-AA77-4F60-9D64-0EF6F0870135}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A6C001FF-AA77-4F60-9D64-0EF6F0870135}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1C734165-14F2-4071-9BEF-CF3AB8EFED42}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1C734165-14F2-4071-9BEF-CF3AB8EFED42}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1C734165-14F2-4071-9BEF-CF3AB8EFED42}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1C734165-14F2-4071-9BEF-CF3AB8EFED42}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

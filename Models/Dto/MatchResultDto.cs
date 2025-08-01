@@ -10,6 +10,7 @@ namespace tenis_pro_back.Models.Dto
 
         [BsonElement("sets")]
         public required List<SetResultDto> Sets { get; set; }
+        public Int32? Points { get; set; }
     }
 
     public class SetResultDto

@@ -7,14 +7,14 @@ namespace tenis_pro_back.Models
     {
 		[BsonId]
 		[BsonRepresentation(BsonType.ObjectId)]
-		public string Id { get; set; }
+		public string? Id { get; set; }
 
 		[BsonElement("name")]
         public required string Name { get; set; }
 
 		[BsonElement("functionalities")]
 		[BsonRepresentation(BsonType.ObjectId)]
-		public required List<string>? Functionalities { get; set; }  // IDs de las funcionalidades
+		public List<string>? Functionalities { get; set; } = new List<string>();  // IDs de las funcionalidades
 
 		[BsonElement("type")]
 		public required ProfileType Type { get; set; }

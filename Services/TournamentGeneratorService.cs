@@ -1,8 +1,8 @@
-using MongoDB.Bson;
-using System.Linq;
+using MongoDB.Driver;
 using tenis_pro_back.Interfaces;
 using tenis_pro_back.Models;
 using tenis_pro_back.Models.Dto;
+using tenis_pro_back.Models.Enums;
 
 namespace tenis_pro_back.Services
 {
@@ -10,98 +10,132 @@ namespace tenis_pro_back.Services
     {
         private readonly ITournament _tournamentRepository;
         private readonly IMatch _matchRepository;
+        private readonly IMongoClient _mongoClient;
 
-        public TournamentGeneratorService(ITournament tournamentRepository, IMatch matchRepository)
+        public TournamentGeneratorService(
+            ITournament tournamentRepository,
+            IMatch matchRepository,
+            IMongoClient mongoClient)
         {
             _tournamentRepository = tournamentRepository;
             _matchRepository = matchRepository;
+            _mongoClient = mongoClient;
         }
 
         public async Task<Tournament> GenerateDraw(string tournamentId, DrawConfigurationDto config)
         {
+            var tournament = await ValidateTournamentState(tournamentId);
+
+            using var session = await _mongoClient.StartSessionAsync();
+            session.StartTransaction();
+
+            try
+            {
+                var zones = CalculateZones(tournament.Participants, config);
+
+                await SaveTournamentDraw(tournamentId, zones, config, session);
+                await GenerateRoundRobinMatches(tournamentId, zones, session);
+
+                await session.CommitTransactionAsync();
+
+                return await _tournamentRepository.GetById(tournamentId);
+            }
+            catch
+            {
+                await session.AbortTransactionAsync();
+                throw;
+            }
+        }
+
+        private async Task<Tournament> ValidateTournamentState(string tournamentId)
+        {
             var tournament = await _tournamentRepository.GetById(tournamentId);
             if (tournament == null)
-            {
                 throw new Exception("Tournament not found");
-            }
 
-            if (tournament.Status != Models.Enums.TournamentStatusEnum.Programming)
-                throw new Exception("The tournament is not in a state to be programmed.");
+            if (tournament.Status != TournamentStatusEnum.Programming)
+                throw new Exception("Tournament is not in Programming state.");
 
-            var participants = tournament.Participants.OrderBy(p => p.Ranking).ToList();
-            if (participants.Count < 2)
-            {
-                throw new Exception("Not enough participants to generate the draw.");
-            }
+            if (tournament.Participants.Count < 2)
+                throw new Exception("Not enough participants.");
 
-            // Actualizar la configuración del torneo
-            tournament.IncludePlata = config.IncludePlata;
-            tournament.PlayersPerZone = config.PlayersPerZone;
-            tournament.QualifiersPerZone = config.QualifiersPerZone;
+            return tournament;
+        }
 
-            // Calcular automáticamente el número de zonas
-            var numZones = (int)Math.Ceiling((double)participants.Count / config.PlayersPerZone);
+        private List<Zone> CalculateZones(List<Participant> participants, DrawConfigurationDto config)
+        {
+            var ordered = participants.OrderBy(p => p.Ranking).ToList();
+            int numZones = (int)Math.Ceiling((double)ordered.Count / config.PlayersPerZone);
 
-            // 2. Identify seeds
-            var seeds = participants.Take(numZones).ToList();
-            var rest = participants.Skip(numZones).ToList();
+            var seeds = ordered.Take(numZones).ToList();
+            var rest = ordered.Skip(numZones).OrderBy(x => Guid.NewGuid()).ToList();
 
-            // 3. Shuffle the rest of the players
-            var random = new Random();
-            rest = rest.OrderBy(x => random.Next()).ToList();
-
-            // 4. Create zones and assign seeds
-            tournament.Zones.Clear();
+            var zones = new List<Zone>();
             for (int i = 0; i < numZones; i++)
             {
-                tournament.Zones.Add(new Zone
+                zones.Add(new Zone
                 {
                     Name = $"Zone {Convert.ToChar(65 + i)}",
                     ParticipantIds = new List<string> { seeds[i].Id }
                 });
             }
 
-            // 5. Distribute the rest of the players
-            int currentZoneIndex = 0;
+            int index = 0;
             foreach (var player in rest)
             {
-                while (tournament.Zones[currentZoneIndex].ParticipantIds.Count >= config.PlayersPerZone)
-                {
-                    currentZoneIndex = (currentZoneIndex + 1) % numZones;
-                }
-                tournament.Zones[currentZoneIndex].ParticipantIds.Add(player.Id);
-            }
-            
-            // 6. Generate matches for each zone (round-robin)
-            tournament.Status = Models.Enums.TournamentStatusEnum.Initiated;
-            await GenerateMatchesForZones(tournament);
+                while (zones[index].ParticipantIds.Count >= config.PlayersPerZone)
+                    index = (index + 1) % numZones;
 
-            await _tournamentRepository.Put(tournament.Id, tournament);
-            return tournament;
+                zones[index].ParticipantIds.Add(player.Id);
+            }
+
+            return zones;
         }
 
-        private async Task GenerateMatchesForZones(Tournament tournament)
+        private async Task SaveTournamentDraw(
+            string tournamentId,
+            List<Zone> zones,
+            DrawConfigurationDto config,
+            IClientSessionHandle session)
         {
-            foreach (var zone in tournament.Zones)
+            var update = new TournamentUpdateDrawDto
             {
-                var participantsInZone = zone.ParticipantIds;
-                for (int i = 0; i < participantsInZone.Count; i++)
+                Id = tournamentId,
+                IncludePlata = config.IncludePlata,
+                PlayersPerZone = config.PlayersPerZone,
+                QualifiersPerZone = config.QualifiersPerZone,
+                Zones = zones,
+                Status = TournamentStatusEnum.Initiated
+            };
+
+            await _tournamentRepository.UpdateDraw(update, session);
+        }
+
+        private async Task GenerateRoundRobinMatches(
+            string tournamentId,
+            List<Zone> zones,
+            IClientSessionHandle session)
+        {
+            foreach (var zone in zones)
+            {
+                var players = zone.ParticipantIds;
+                for (int i = 0; i < players.Count; i++)
                 {
-                    for (int j = i + 1; j < participantsInZone.Count; j++)
+                    for (int j = i + 1; j < players.Count; j++)
                     {
                         var match = new Match
                         {
-                            TournamentId = tournament.Id,
-                            Participant1Id = participantsInZone[i],
-                            Participant2Id = participantsInZone[j],
+                            TournamentId = tournamentId,
+                            Participant1Id = players[i],
+                            Participant2Id = players[j],
                             ZoneId = zone.Id,
                             RoundName = zone.Name,
-                            Status = Models.Match.MatchStatus.Scheduled
+                            Status = Match.MatchStatus.Pending
                         };
-                        await _matchRepository.CreateMatch(match);
+                        await _matchRepository.CreateMatch(match, session);
                     }
                 }
             }
         }
     }
-} 
+}

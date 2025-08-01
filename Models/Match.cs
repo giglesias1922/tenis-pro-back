@@ -42,10 +42,20 @@ namespace tenis_pro_back.Models
         [BsonElement("createdate")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+        [BsonElement("bracket_type")]
+        public string? BracketType { get; set; } // "Main" o "SilverCup"
+
+        [BsonElement("next_match_id")]
+        [BsonRepresentation(BsonType.ObjectId)]
+        public string? NextMatchId { get; set; } // ID del match al que pasa el ganador
+
+        [BsonElement("next_match_position")]
+        public int? NextMatchPosition { get; set; } // 1 = participant1, 2 = participant2
+
         public enum MatchStatus
         {
-            Scheduled=0,
-            InProgress=1,
+            Pending=0,
+            Scheduled=1,
             Completed=2,
             Suspended=3,
             Cancelled=4
@@ -71,8 +81,7 @@ namespace tenis_pro_back.Models
             [BsonElement("sets")]
             public required List<SetResult> Sets { get; set; } = new();
 
-            [BsonElement("winner")]
-            [BsonRepresentation(BsonType.ObjectId)]
+            [BsonElement("points")]
             public Int32? Points { get; set; }
         }
 

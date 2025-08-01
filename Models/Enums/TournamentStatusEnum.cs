@@ -5,6 +5,7 @@
         Pending = 0,
         Programming = 1,
         Initiated = 2,
-        Finalized = 3
+        Completed = 3,
+        InProgress=4
     }
 }

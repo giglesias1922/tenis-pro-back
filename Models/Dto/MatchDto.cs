@@ -18,8 +18,10 @@ namespace tenis_pro_back.Models.Dto
         public string? Participant1Id { get; set; }
         public string? Participant2Id { get; set; }
         public string? StatusDescription { get; set; }
-        
-        
 
+        public string? ZoneId { get; set; }
+        public string? TournamentId { get; set; }
+        public string? RoundName { get; set; }
+        public string? BracketType { get; set; }
     }
 }

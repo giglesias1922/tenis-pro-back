@@ -1,4 +1,6 @@
-﻿using MongoDB.Driver;
+﻿using MongoDB.Bson;
+using MongoDB.Driver;
+using System.Linq;
 using System.Text.Json;
 using tenis_pro_back.Interfaces;
 using tenis_pro_back.Models;
@@ -22,6 +24,15 @@ namespace tenis_pro_back.Repositories
         public async Task Post(Match match)
         {
             await _matchesCollection.InsertOneAsync(match);
+        }
+
+        public async Task<List<Match>> GetMatchesByIdsAsync(List<string> matchIds)
+        {
+            var matches = await _matchesCollection
+                .Find(m => matchIds.Contains(m.Id))
+                .ToListAsync();
+
+            return matches;
         }
 
         public async Task<List<Match>> GetScheduledMatchesAsync()
@@ -103,9 +114,37 @@ namespace tenis_pro_back.Repositories
                 Participant2Id = participant2?.Id,
                 Status = match.Status,
                 LocationDescription = tournamentDto.LocationDescription,
-                CategoryDescription = tournamentDto.CategoryDescription
+                CategoryDescription = tournamentDto.CategoryDescription,
+                ZoneId = match.ZoneId,
+                TournamentId = match.TournamentId,
+                RoundName = match.RoundName,
             };
         }
+
+        
+
+        public async Task<List<Match>> GetMatchesByZone(string tournamentId, string zoneId)
+        {
+            var filter = Builders<Match>.Filter.And(
+                Builders<Match>.Filter.Eq(m => m.TournamentId, tournamentId),
+                Builders<Match>.Filter.Eq(m => m.ZoneId, zoneId)
+            );
+
+            return await _matchesCollection.Find(filter).ToListAsync();
+        }
+
+
+
+        public async Task<List<Match>> GetMatchesByTournament(string tournamentId, IClientSessionHandle? session = null)
+        {
+            var filter = Builders<Match>.Filter.Eq(m => m.TournamentId, tournamentId);
+
+            if (session != null)
+                return await _matchesCollection.Find(session, filter).ToListAsync();
+            else
+                return await _matchesCollection.Find(filter).ToListAsync();
+        }
+
 
         public async Task<List<MatchHistory>> GetMatchHistoryAsync(string id)
         {
@@ -140,29 +179,59 @@ namespace tenis_pro_back.Repositories
             await _matchesCollection.UpdateOneAsync(m => m.Id == id, update);
         }
 
-        public async Task AddMatchResultAsync(string id, MatchResultDto result)
-        {
-            var filter = Builders<Match>.Filter.Eq(m => m.Id, id);
-
-            var resultField = new StringFieldDefinition<Match, MatchResultDto>("Result");  // Definir el campo explícitamente
-
-            var update = Builders<Match>.Update
-                .Set(resultField, result)  // Usa el FieldDefinition aquí
-                .Set("Status", Match.MatchStatus.Completed)
-                .Push("History", new Match.MatchHistory { Status = Match.MatchStatus.Completed });
-
-            await _matchesCollection.UpdateOneAsync(filter, update);
-        }
-
+        
+        
 
         public async Task Delete(string id)
         {
             await _matchesCollection.DeleteOneAsync(c => c.Id == id);
         }
 
-        public async Task CreateMatch(Match match)
+
+        public async Task<Match> CreateMatch(Models.Match match, IClientSessionHandle session)
         {
-            await _matchesCollection.InsertOneAsync(match);
+            await _matchesCollection.InsertOneAsync(session, match);
+
+            return match;
         }
+
+        public async Task AddMatchResult(string id, MatchResultDto dto,  IClientSessionHandle session)
+        {
+            var update = Builders<Match>.Update;
+            var updates = new List<UpdateDefinition<Match>>();
+
+            if (dto.Winner != null)
+            {
+                var matchResult = new Match.MatchResult
+                {
+                    Winner = dto.Winner,
+                    Sets = dto.Sets.Select(s => new Match.SetResult
+                    {
+                        PlayerAGames = s.PlayerA_games,
+                        PlayerBGames = s.PlayerB_games,
+                        Tiebreak = s.Tiebreak,
+                        WinnerSet = s.WinnerSet
+                    }).ToList(),
+                    Points = dto.Points
+                };
+
+                updates.Add(update.Set(m => m.Result, matchResult));
+                updates.Add(update.Set(m => m.Status, Match.MatchStatus.Completed));
+                updates.Add(update.Push(m => m.History, new Match.MatchHistory
+                {
+                    Date = DateTime.UtcNow,
+                    Status = Match.MatchStatus.Completed,
+                    Notes = "Result updated"
+                }));
+            }
+
+            
+            if (updates.Count == 0)
+                return; // Nada para actualizar
+
+            var combined = update.Combine(updates);
+            await _matchesCollection.UpdateOneAsync(session,m => m.Id == id, combined);
+        }
+
     }
 }

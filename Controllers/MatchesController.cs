@@ -16,10 +16,12 @@ namespace tenis_pro_back.Controllers
     public class MatchesController : ControllerBase
     {
         private readonly IMatch _repository;
+        private readonly ITournamentProgressService _tournamentProgressService;
 
-        public MatchesController(IMatch repository)
+        public MatchesController(IMatch repository, ITournamentProgressService tournamentProgressService)
         {
             _repository = repository;
+            _tournamentProgressService = tournamentProgressService;
         }
 
         // DELETE: api/categories/{id}
@@ -163,7 +165,7 @@ namespace tenis_pro_back.Controllers
         {
             try
             {
-                await _repository.AddMatchResultAsync(id, result);
+                await _tournamentProgressService.RegisterMatchResult(id, result);
                 return Ok();
             }
             catch (Exception ex)

@@ -34,7 +34,7 @@ namespace tenis_pro_back.Controllers
             var tournaments = await _tournamentsCollection
                 .Find(t => t.CategoryId == request.CategoryId
                         && t.TournamentType == request.TournamentType
-                        && t.Status== Models.Enums.TournamentStatusEnum.Finalized
+                        && t.Status== Models.Enums.TournamentStatusEnum.Completed
                         && t.CloseDate.Value.Year == selectedYear)
                 .ToListAsync();
 

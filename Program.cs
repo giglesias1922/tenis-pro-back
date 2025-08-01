@@ -10,6 +10,7 @@ using tenis_pro_back.Models;
 using tenis_pro_back.Models.Dto;
 using tenis_pro_back.MongoDBService;
 using tenis_pro_back.Repositories;
+using tenis_pro_back.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -60,9 +61,11 @@ builder.Services.AddScoped(typeof(IFunctionality), typeof(FunctionalitiesReposit
 builder.Services.AddScoped(typeof(IMatch), typeof(MatchesRepository));
 builder.Services.AddScoped(typeof(IUserToken), typeof(UserTokenRepository));
 builder.Services.AddScoped(typeof(IParameter), typeof(ParameterRepository));
+builder.Services.AddScoped(typeof(ITournamentLog), typeof(TournamentLogRepository));
 
 // Services
 builder.Services.AddScoped(typeof(ITournamentGeneratorService), typeof(tenis_pro_back.Services.TournamentGeneratorService));
+builder.Services.AddScoped(typeof(ITournamentProgressService), typeof(tenis_pro_back.Services.TournamentProgressService));
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -191,3 +194,9 @@ if (app.Environment.IsDevelopment())
 
 app.MapControllers();
 app.Run();
+
+namespace tenis_pro_back
+{
+    // 🔑 Esto habilita WebApplicationFactory<Program> en tests
+    public partial class Program { }
+}

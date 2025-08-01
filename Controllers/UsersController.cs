@@ -1,9 +1,12 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using AutoMapper;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
+using Org.BouncyCastle.Crypto.Generators;
 using tenis_pro_back.Helpers;
 using tenis_pro_back.Interfaces;
 using tenis_pro_back.Models;
+using tenis_pro_back.Models.Response;
 
 namespace tenis_pro_back.Controllers
 {
@@ -191,5 +194,53 @@ namespace tenis_pro_back.Controllers
 
             }
         }
+
+        //Metodo para crear usuarios al azar para pruebas
+        [HttpPost("generate/{count}/{categoryId}")]
+        [AllowAnonymous] // Quitar si solo admins pueden usarlo
+        public async Task<ActionResult> GenerateUsers(int count, string categoryId, string profileId)
+        {
+            try
+            {
+                var users = new List<User>();
+                var rnd = new Random();
+
+                for (int i = 0; i < count; i++)
+                {
+                    var user = new User()
+                    {
+                        Name = $"User{i}",
+                        LastName = "Test",
+                        Email = $"user{i}@test.com",
+                        Password = "Test1234!",
+                        CategoryId = categoryId,
+                        ProfileId = profileId,
+                        Status = UserStatus.Enabled
+                    };
+
+                    await _userRepository.Post(user);
+                    
+                }
+
+                return Ok(new
+                {
+                    success = true,
+                    message = $"{count} usuarios generados exitosamente en la categoría {categoryId}",
+                    data = users
+                });
+            }
+            catch (Exception ex)
+            {
+                HandleErrorHelper.LogError(ex);
+                return BadRequest(new
+                {
+                    success = false,
+                    message = "Error al generar usuarios",
+                    error = ex.Message
+                });
+            }
+        }
+
+
     }
 }
