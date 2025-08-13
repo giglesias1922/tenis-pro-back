@@ -232,6 +232,5 @@ namespace tenis_pro_back.Repositories
             var combined = update.Combine(updates);
             await _matchesCollection.UpdateOneAsync(session,m => m.Id == id, combined);
         }
-
     }
 }
