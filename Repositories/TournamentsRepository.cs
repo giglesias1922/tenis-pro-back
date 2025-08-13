@@ -39,7 +39,7 @@ namespace tenis_pro_back.Repositories
 
             // Crear el update combinado
             var update = Builders<Tournament>.Update.Combine(
-                Builders<Tournament>.Update.Set(t => t.Status, TournamentStatusEnum.Programming),
+                Builders<Tournament>.Update.Set(t => t.Status, TournamentStatusEnum.CloseRegistration),
                 Builders<Tournament>.Update.Set(t => t.Zones, new List<Zone>()) // suponiendo que Zones es una lista de Zone
             );
 
@@ -56,7 +56,7 @@ namespace tenis_pro_back.Repositories
 
             
             var openTournaments = await _tournaments
-                .Find(t => t.Status == Models.Enums.TournamentStatusEnum.Pending)
+                .Find(t => t.Status == Models.Enums.TournamentStatusEnum.OpenRegistration)
                 .ToListAsync();
 
             return await GenerateDtoList(openTournaments);
@@ -153,7 +153,9 @@ namespace tenis_pro_back.Repositories
         public async Task<IEnumerable<TournamentDetailDto>> GetTournamentsActives()
         {
             var tournaments = await _tournaments
-                .Find(t => t.Status != Models.Enums.TournamentStatusEnum.Pending || t.Status== Models.Enums.TournamentStatusEnum.Initiated)
+                .Find(t => t.Status != Models.Enums.TournamentStatusEnum.OpenRegistration 
+                || t.Status== Models.Enums.TournamentStatusEnum.CloseRegistration
+                || t.Status == Models.Enums.TournamentStatusEnum.InProgress)
                 .ToListAsync();
 
             return await GenerateDtoList(tournaments);

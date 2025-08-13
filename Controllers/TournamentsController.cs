@@ -1,6 +1,5 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using MongoDB.Driver;
 using tenis_pro_back.Helpers;
 using tenis_pro_back.Interfaces;
 using tenis_pro_back.Models;
@@ -109,8 +108,38 @@ namespace tenis_pro_back.Controllers
             }
         }
 
-		// GET: api/tournaments/{id}
-		[HttpGet("{id}")]
+        // GET: api/tournaments/{id}
+        [HttpGet("{id}/zone-draw")]
+        public async Task<ActionResult<List<TournamentZone>>> GetZonesDraw(string id)
+        {
+            try
+            {
+                var tournament = await _tournamentRepository.GetDtoById(id);
+
+                if (tournament == null)
+                {
+                    return NotFound(new ApiResponse<TournamentDetailDto>(
+                                    null,
+                                    "Torneo no encontrado",
+                                    success: false
+                                ));
+                }
+
+                List<TournamentZone> zones = await _tournamentGeneratorService.GetZonesDraw(id);
+
+                return Ok(new ApiResponse<List<TournamentZone>>(zones, "Registros obtenidos"));
+            }
+            catch (Exception ex)
+            {
+                HandleErrorHelper.LogError(ex);
+                return BadRequest(ex.Message);
+
+            }
+        }
+
+
+        // GET: api/tournaments/{id}
+        [HttpGet("{id}")]
         [AllowAnonymous]
         public async Task<ActionResult<TournamentDetailDto>> GetById(string id)
 		{
@@ -145,7 +174,8 @@ namespace tenis_pro_back.Controllers
 			try
 			{
 				tournament.Id = null; // Deja que MongoDB genere el Id automáticamente
-				await _tournamentRepository.Post(tournament);
+                tournament.Status = Models.Enums.TournamentStatusEnum.OpenRegistration;
+                await _tournamentRepository.Post(tournament);
 				return CreatedAtAction(nameof(GetById), new { id = tournament.Id }, tournament);
 			}
             catch (Exception ex)
@@ -238,7 +268,7 @@ namespace tenis_pro_back.Controllers
                 }
 
                 // Verificar que el torneo esté en estado Pending
-                if (tournament.Status != Models.Enums.TournamentStatusEnum.Pending)
+                if (tournament.Status != Models.Enums.TournamentStatusEnum.OpenRegistration)
                 {
                     return BadRequest("Solo se pueden cerrar inscripciones de torneos en estado Pending");
                 }
@@ -250,7 +280,7 @@ namespace tenis_pro_back.Controllers
                 }
 
                 // Cambiar el estado a Programming
-                await _tournamentRepository.UpdateStatus(id, Models.Enums.TournamentStatusEnum.Programming);
+                await _tournamentRepository.UpdateStatus(id, Models.Enums.TournamentStatusEnum.CloseRegistration);
                 
                 return Ok(new { message = "Inscripciones cerradas exitosamente" });
                 new ApiResponse<object>(null, "Inscripciones cerradas exitosamente");
@@ -276,9 +306,9 @@ namespace tenis_pro_back.Controllers
                 }
 
                 // Verificar que el torneo esté en estado Programming
-                if (tournament.Status != Models.Enums.TournamentStatusEnum.Programming)
+                if (tournament.Status != Models.Enums.TournamentStatusEnum.CloseRegistration)
                 {
-                    return BadRequest("Solo se puede generar el draw de torneos en estado Programming");
+                    return BadRequest("Solo se puede generar el draw de torneos que hayan cerrado la inscripción");
                 }
 
                 // Verificar que tenga participantes
@@ -312,7 +342,7 @@ namespace tenis_pro_back.Controllers
                 }
 
                 // Verificar que el torneo esté abierto para inscripciones
-                if (tournament.Status != Models.Enums.TournamentStatusEnum.Pending || tournament.CloseDate < DateTime.UtcNow)
+                if (tournament.Status != Models.Enums.TournamentStatusEnum.OpenRegistration)
                 {
                     return Ok(new ApiResponse<Tournament>(null, "El torneo no está abierto para inscripciones",false));
 
@@ -365,7 +395,7 @@ namespace tenis_pro_back.Controllers
                 }
 
                 // Verificar que el torneo esté abierto para inscripciones
-                if (tournament.Status != Models.Enums.TournamentStatusEnum.Pending)
+                if (tournament.Status != Models.Enums.TournamentStatusEnum.OpenRegistration)
                 {
                     return BadRequest("No se puede eliminar inscripciones de un torneo que ya comenzó");
                 }

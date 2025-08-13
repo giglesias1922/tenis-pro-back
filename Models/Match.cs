@@ -98,7 +98,8 @@ namespace tenis_pro_back.Models
 
             [BsonElement("winnerSet")]
             [BsonRepresentation(BsonType.ObjectId)]
-            public required string WinnerSet { get; set; }
+            [BsonIgnoreIfNull]
+            public string? WinnerSet { get; set; }
         }
 
     }

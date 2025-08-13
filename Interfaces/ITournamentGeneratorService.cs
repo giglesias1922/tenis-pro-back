@@ -6,5 +6,6 @@ namespace tenis_pro_back.Interfaces
     public interface ITournamentGeneratorService
     {
         Task<Tournament> GenerateDraw(string tournamentId, DrawConfigurationDto config);
+        Task<List<TournamentZone>> GetZonesDraw(string tournamentId);
     }
 } 

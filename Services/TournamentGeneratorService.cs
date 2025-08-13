@@ -1,8 +1,12 @@
+using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.Extensions.FileSystemGlobbing;
+using MongoDB.Bson;
 using MongoDB.Driver;
 using tenis_pro_back.Interfaces;
 using tenis_pro_back.Models;
 using tenis_pro_back.Models.Dto;
 using tenis_pro_back.Models.Enums;
+using tenis_pro_back.Models.Response;
 
 namespace tenis_pro_back.Services
 {
@@ -22,9 +26,35 @@ namespace tenis_pro_back.Services
             _mongoClient = mongoClient;
         }
 
+        public async Task<List<TournamentZone>> GetZonesDraw(string tournamentId)
+        {
+            var tournament = await _tournamentRepository.GetById(tournamentId);
+
+            if (tournament == null)
+                return new List<TournamentZone>();
+
+            var matchList = await _matchRepository.GetMatchesByTournament(tournamentId);
+
+            var zonesWithMatches = tournament.Zones.Select(z => new TournamentZone
+            {
+                Id = z.Id,
+                Name = z.Name,
+                Participants = tournament.Participants
+                    .Where(p => z.ParticipantIds.Contains(p.Id))
+                    .ToList(),
+                Matches = matchList
+                    .Where(m => m.ZoneId == z.Id)
+                    .ToList()
+            }).ToList();
+
+            return zonesWithMatches;
+        }
+
         public async Task<Tournament> GenerateDraw(string tournamentId, DrawConfigurationDto config)
         {
-            var tournament = await ValidateTournamentState(tournamentId);
+            var tournament = await _tournamentRepository.GetById(tournamentId);
+
+
 
             using var session = await _mongoClient.StartSessionAsync();
             session.StartTransaction();
@@ -47,20 +77,6 @@ namespace tenis_pro_back.Services
             }
         }
 
-        private async Task<Tournament> ValidateTournamentState(string tournamentId)
-        {
-            var tournament = await _tournamentRepository.GetById(tournamentId);
-            if (tournament == null)
-                throw new Exception("Tournament not found");
-
-            if (tournament.Status != TournamentStatusEnum.Programming)
-                throw new Exception("Tournament is not in Programming state.");
-
-            if (tournament.Participants.Count < 2)
-                throw new Exception("Not enough participants.");
-
-            return tournament;
-        }
 
         private List<Zone> CalculateZones(List<Participant> participants, DrawConfigurationDto config)
         {
@@ -105,7 +121,7 @@ namespace tenis_pro_back.Services
                 PlayersPerZone = config.PlayersPerZone,
                 QualifiersPerZone = config.QualifiersPerZone,
                 Zones = zones,
-                Status = TournamentStatusEnum.Initiated
+                Status = TournamentStatusEnum.InProgress
             };
 
             await _tournamentRepository.UpdateDraw(update, session);

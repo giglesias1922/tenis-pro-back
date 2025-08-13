@@ -203,14 +203,14 @@ namespace tenis_pro_back.Repositories
             if (dto.Winner != null)
             {
                 var matchResult = new Match.MatchResult
-                {
+                {                    
                     Winner = dto.Winner,
                     Sets = dto.Sets.Select(s => new Match.SetResult
                     {
                         PlayerAGames = s.PlayerA_games,
                         PlayerBGames = s.PlayerB_games,
                         Tiebreak = s.Tiebreak,
-                        WinnerSet = s.WinnerSet
+                        WinnerSet = string.IsNullOrWhiteSpace(s.WinnerSet) ? null : s.WinnerSet
                     }).ToList(),
                     Points = dto.Points
                 };

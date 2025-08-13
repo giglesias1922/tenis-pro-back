@@ -5,6 +5,7 @@ namespace tenis_pro_back.Models.Dto
 {
     public class MatchResultDto
     {
+        [BsonId]
         [BsonElement("winner")]
         public required string Winner { get; set; }
 

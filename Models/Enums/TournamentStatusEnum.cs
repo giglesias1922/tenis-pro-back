@@ -2,10 +2,10 @@
 {
     public enum TournamentStatusEnum:Int16
     {
-        Pending = 0,
-        Programming = 1,
-        Initiated = 2,
+        OpenRegistration = 0,
+        CloseRegistration = 1,
+        InProgress = 2,
         Completed = 3,
-        InProgress=4
+        
     }
 }
